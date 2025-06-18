@@ -4,7 +4,7 @@ import numpy as np
 
 class MPS():
     """
-        Class for an MPS
+        Class for an Matrix product State
     """
 
     def __init__(self,L,mem='on',path='MPS',d=2,b_mps1=np.identity(2),b_mps2=None):
@@ -29,10 +29,10 @@ class MPS():
 
 
     def __str__(self):
-        return f'Matrix Product State of a ! D chain with {self.L} sites'
+        return f'Matrix Product State of a 1 D chain with {self.L} sites'
     
     def __repr__(self):
-        return f'Matrix Product State of a ! D chain with {self.L} sites'
+        return f'Matrix Product State of a 1 D chain with {self.L} sites'
 
 
     def write(self,i,ten):
