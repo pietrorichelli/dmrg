@@ -2,7 +2,7 @@ import os
 import shutil
 import numpy as np
 
-class contractions:
+class CONT():
     """
     Class that manages and stores in the memory the contractions on a 1 dimnasional MPS:
         Attributes:
@@ -60,6 +60,7 @@ class contractions:
 
     def add(self,site,dir):
         ten = self.read(site-(-1)**self.count[dir],dir)
+        # ten = self.read(site,dir)
 
         ten = np.tensordot(ten,self.mps.read(site),(0,1+self.count[dir]))
         ten = np.tensordot(ten,self.h.mpo(),([0,2],[2+self.count[dir],0]))
@@ -80,7 +81,6 @@ class contractions:
             res = np.tensordot(res,np.conj(self.mps.read(i)),([0,2],[1,0]))
 
         return res
-
     
     def right(self,site):
         """
@@ -106,12 +106,5 @@ class contractions:
     
     
     def env_prep(self,site):
-
-        return self.read(site - 1,'l'),self.read(site + 2,'r')
-
-
         
-    
-
-
-
+        return self.read(site - 1,'l'),self.read(site + 2,'r')

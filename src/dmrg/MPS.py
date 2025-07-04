@@ -62,7 +62,6 @@ class MPS():
     
     def readS(self,i):
         return np.memmap(self.path+f'/S/{i}-{i+1}.dat',dtype='complex',mode='r',shape=self.shapeS(i))
-
     
     def write_bound(self,ten_l,ten_r=None):
         if ten_r == None:
@@ -70,14 +69,17 @@ class MPS():
         self.write(0,ten_l)
         self.write(self.L-1,ten_r)
 
-
     def write_left(self,i,mat):
         self.write(i,self.left_ten(mat))
 
     def write_right(self,i,mat):
         self.write(i,self.right_ten(mat))
 
-    
+    def delete(self,i):
+        if os.path.isfile(self.path+f'/S/{i}-{i+1}.dat'):
+            os.remove(self.path+f'/S/{i}-{i+1}.dat')
+            os.remove(self.path+f'/S/{i}-{i+1}.txt')
+            
     def left_ten(self,mat):
         
         d = self.d
@@ -102,3 +104,13 @@ class MPS():
                 ten[i0,:,i2] = mat[:,i0*int(b/d)+i2]
 
         return ten
+
+    def first_sweep(self):
+        half_right = [i for i in range(self.L//2,self.L-2)]
+        left = [self.L-4-i for i in range(self.L-4)]
+        return zip(half_right+left,['r']*(self.L//2-2)+['l']*(self.L-4))
+
+    def sweep(self):
+        right = [i for i in range(2,self.L-2)]
+        left = [self.L-4-i for i in range(self.L-4)]
+        return zip(right+left,['r']*(self.L-4)+['l']*(self.L-4))

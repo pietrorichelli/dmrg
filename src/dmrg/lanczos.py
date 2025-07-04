@@ -45,7 +45,7 @@ class EffH():
         
         for i in range(1,self.k):
             beta = np.linalg.norm(psi)
-            if beta  < 1e-15:
+            if beta  < 1e-8:
                 T = T[:i, :i]
                 break
             if exc == 'off':

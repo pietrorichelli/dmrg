@@ -6,10 +6,11 @@ class MPO_TFI():
     Z = np.array([[1,0],[0,-1]])
     X = np.array([[0,1],[1,0]])
 
-    def __init__(self,J,h,d=2):
+    def __init__(self,J,h_x,pol=None,d=2):
         self.J = J 
-        self.h = h 
+        self.h_x = h_x 
         self.d = d
+        self.pol = pol
 
 
     def Wl(self):
@@ -17,8 +18,11 @@ class MPO_TFI():
         Wleft = np.zeros((2,2,3))
 
         Wleft[:,:,0] = MPO_TFI.Id
-        Wleft[:,:,1] = -self.J* MPO_TFI.X
-        Wleft[:,:,2] = -self.h*MPO_TFI.Z
+        Wleft[:,:,1] = -self.J*MPO_TFI.Z
+        Wleft[:,:,2] = -self.h_x*MPO_TFI.X
+
+        if self.pol == 'tot':
+            Wleft[:,:,2] -= 10*MPO_TFI.Z
 
         return Wleft
 
@@ -29,10 +33,10 @@ class MPO_TFI():
 
         MPO[:,:,0,0] = MPO_TFI.Id
         
-        MPO[:,:,0,1] = -self.J* MPO_TFI.X
-        MPO[:,:,0,2] = -self.h*MPO_TFI.Z
+        MPO[:,:,0,1] = -self.J* MPO_TFI.Z
+        MPO[:,:,0,2] = -self.h_x*MPO_TFI.X
 
-        MPO[:,:,1,2] = MPO_TFI.X
+        MPO[:,:,1,2] = MPO_TFI.Z
         MPO[:,:,2,2] = MPO_TFI.Id 
 
         return MPO
@@ -42,12 +46,42 @@ class MPO_TFI():
 
         Wright = np.zeros((2,2,3))
 
-        Wright[:,:,0] = -self.h*MPO_TFI.Z
-        Wright[:,:,1] = MPO_TFI.X 
+        Wright[:,:,0] = -self.h_x*MPO_TFI.X
+        Wright[:,:,1] = MPO_TFI.Z 
         Wright[:,:,2] = MPO_TFI.Id 
+
+        if self.pol == 'tot':
+            Wright[:,:,0] -= 10*MPO_TFI.Z
 
         return Wright
         
+
+class MPO_ID():
+    Id = np.identity(2)
+
+    def __init__(self,d=2):
+        self.d = d
+    
+    def Wl(self):
+        Wleft = np.zeros((2,2,1))
+
+        Wleft[:,:,0] = MPO_ID.Id
+
+        return Wleft
+
+    def mpo(self):
+        MPO = np.zeros((2,2,1,1))
+
+        MPO[:,:,0,0] = MPO_ID.Id
+
+        return MPO
+
+    def Wr(self):
+        Wright = np.zeros((2,2,1))
+
+        Wright[:,:,0] = MPO_ID.Id
+
+        return Wright
 
 class SUSY_MPO_1D():
 
