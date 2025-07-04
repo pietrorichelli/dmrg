@@ -114,3 +114,11 @@ class MPS():
         right = [i for i in range(2,self.L-2)]
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(right+left,['r']*(self.L-4)+['l']*(self.L-4))
+
+    def right_sweep(self):
+        right = [i for i in range(2,self.L-2)]
+        return zip(right,['r']*(self.L-4))
+
+    def left_sweep(self):
+        left = [self.L-4-i for i in range(self.L-4)]
+        return zip(left,['l']*(self.L-4))

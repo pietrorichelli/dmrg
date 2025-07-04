@@ -71,7 +71,7 @@ class dmrg():
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
 
-        En_pre = np.conj(init_vec)@H.matvec(init_vec)
+        # En_pre = np.conj(init_vec)@H.matvec(init_vec)
         
         if stage == None:
             En,grd = H.lanczos_grd(psi0=None,exc=exc)
@@ -103,7 +103,7 @@ class dmrg():
             if site == 1:
                 self.cont.add(site,'l')
         
-        return En, -c**2@np.log(c**2), En_pre
+        return En, -c**2@np.log(c**2)
 
 
     def remish(ten):

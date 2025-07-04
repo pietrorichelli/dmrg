@@ -13,7 +13,7 @@
 ## Installation
 
 ```console
-pip install dmrg
+python3 -m  pip install git+https://github.com/pietrorichelli/dmrg
 ```
 
 ## License
