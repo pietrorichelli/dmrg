@@ -77,7 +77,7 @@ class CONT():
         res = np.tensordot(np.tensordot(self.mps.read(0),h.Wl(),(0,0)),np.conj(self.mps.read(0)),(1,0))
         for i in range(1,site+1):
             res = np.tensordot(res,self.mps.read(i),(0,1))
-            res = np.tensordot(res,h.mpo(),([0,2],[2,0]))
+            res = np.tensordot(res,h.mpo(site=i),([0,2],[2,0]))
             res = np.tensordot(res,np.conj(self.mps.read(i)),([0,2],[1,0]))
 
         return res
@@ -90,7 +90,7 @@ class CONT():
         res = np.tensordot(np.tensordot(self.mps.read(self.L-1),h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         for i in range(1,self.L-site):
             res = np.tensordot(res,self.mps.read(self.L-1-i),(0,2))
-            res = np.tensordot(res,h.mpo(),([0,2],[3,0]))
+            res = np.tensordot(res,h.mpo(site=i),([0,2],[3,0]))
             res = np.tensordot(res,np.conj(self.mps.read(self.L-1-i)),([0,2],[2,0]))
         
         return res

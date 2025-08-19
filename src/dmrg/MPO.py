@@ -108,7 +108,7 @@ class SUSY_MPO_1D():
 
         return Wl
 
-    def mpo(self):
+    def mpo(self,site=None):
 
         MPO = np.zeros((2,2,7,7))
 
@@ -128,7 +128,7 @@ class SUSY_MPO_1D():
         
         return MPO
     
-    def Wr(self):
+    def Wr(self,site=None):
         
         Wr = np.zeros((2,2,7))
 
