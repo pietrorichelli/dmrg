@@ -32,7 +32,7 @@ class dmrg():
 
         for i in range(1,int(self.mps.L/2)):
 
-            H = EffH(env_left,env_right,self.h)
+            H = EffH(env_left,env_right,self.h,site=i)
             En[i-1],grd = H.lanczos_grd()
 
             mat = np.reshape(grd,(H.c1*H.d,H.d*H.c2))
@@ -61,7 +61,7 @@ class dmrg():
 
         env_left,env_right = self.cont.env_prep(site)
     
-        H = EffH(env_left,env_right,self.h)
+        H = EffH(env_left,env_right,self.h,site=site)
 
         if dir == 'l' or dir == 'bl':
             init_vec = np.tensordot(self.mps.read(site),np.tensordot(self.mps.read(site+1),self.mps.readS(site+1),(2,0)),(2,1))

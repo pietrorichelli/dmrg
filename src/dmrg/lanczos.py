@@ -2,12 +2,13 @@ import numpy as np
 
 class EffH():
 
-    def __init__(self,L,R,H,k=300):
+    def __init__(self,L,R,H,site,k=300):
         self.L = L 
         self.R = R 
         self.H = H 
         self.k = k
         self.d = H.d
+        self.site = site
         c1,_,_ = L.shape
         c2,_,_ = R.shape
         self.c1 = c1
@@ -22,24 +23,24 @@ class EffH():
     def __repr__(self):
         return 'Effective Hamiltonian on the Cayley tree'
 
-    def matvec(self,psi,site):
+    def matvec(self,psi):
         h = self.H
         psi = np.reshape(psi,(self.c1,self.d,self.d,self.c2))
         
-        x = np.tensordot(self.L,h.mpo(site=site),(1,2))
+        x = np.tensordot(self.L,h.mpo(p=self.site),(1,2))
         x = np.tensordot(x,psi,[(0,2),(0,1)])
-        x = np.tensordot(x,h.mpo(site=site+1),[(2,3),(2,0)])
+        x = np.tensordot(x,h.mpo(p=self.site+1),[(2,3),(2,0)])
         x = np.tensordot(x,self.R,[(4,2),(1,0)])
         
         return np.reshape(x,(self.c1*self.d*self.d*self.c2))
 
-    def lanc_iter(self,psi0,site=None,exc='off'):
+    def lanc_iter(self,psi0,exc='off'):
         psi0 = psi0/np.linalg.norm(psi0)
         vecs = [psi0] 
 
         T = np.zeros((self.k,self.k))
         
-        psi = self.matvec(psi0,site)
+        psi = self.matvec(psi0)
         alpha = T[0, 0] = np.inner(psi0.conj(),psi).real
         psi = psi - alpha* vecs[-1]
         
@@ -63,10 +64,10 @@ class EffH():
             T[i-1, i] = T[i, i-1] = beta    
         return T, np.array(vecs).T
             
-    def lanczos_grd(self,psi0=None,site=None,exc='off'):
+    def lanczos_grd(self,psi0=None,exc='off'):
         if psi0 is None:
             psi0 = np.random.rand(self.c1*self.c2*self.d**2)
-        T, vecs = self.lanc_iter(psi0,site=site,exc=exc)
+        T, vecs = self.lanc_iter(psi0,exc=exc)
         E, v = np.linalg.eigh(T)
         result = vecs @ v[:, np.argmin(E)]
         if exc == 'off':
