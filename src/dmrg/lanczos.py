@@ -2,12 +2,13 @@ import numpy as np
 
 class EffH():
 
-    def __init__(self,L,R,H,k=300):
+    def __init__(self,L,R,H,site,k=300):
         self.L = L 
         self.R = R 
         self.H = H 
         self.k = k
         self.d = H.d
+        self.site = site
         c1,_,_ = L.shape
         c2,_,_ = R.shape
         self.c1 = c1
@@ -26,9 +27,9 @@ class EffH():
         h = self.H
         psi = np.reshape(psi,(self.c1,self.d,self.d,self.c2))
         
-        x = np.tensordot(self.L,h.mpo(),(1,2))
+        x = np.tensordot(self.L,h.mpo(p=self.site),(1,2))
         x = np.tensordot(x,psi,[(0,2),(0,1)])
-        x = np.tensordot(x,h.mpo(),[(2,3),(2,0)])
+        x = np.tensordot(x,h.mpo(p=self.site+1),[(2,3),(2,0)])
         x = np.tensordot(x,self.R,[(4,2),(1,0)])
         
         return np.reshape(x,(self.c1*self.d*self.d*self.c2))
