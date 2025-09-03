@@ -36,7 +36,7 @@ class observables():
         return ob1,ob2
     
     def all_corr(self,path,site,string,obs1,obs2=None):
-        if obs2 == None:
+        if obs2.any() == None:
             obs2 = obs1
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
         
