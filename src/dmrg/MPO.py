@@ -139,3 +139,85 @@ class SUSY_MPO_1D():
         Wr[:,:,6] = self.Pz
 
         return Wr
+
+class MPO_AL():
+
+    Id2 = np.identity(2)
+    Id4 = np.identity(4)
+    Sp = np.array([[0,1],[0,0]])
+    Sm = np.array([[0,0],[1,0]])
+    Z = np.array([[1,0],[0,-1]])
+    d = 4
+
+    sub_BC = [0,2,3]
+    sub_A = [1,4]
+
+    def __init__(self,t_1,t_2,U,e_A,mu):
+        self.t_1 = t_1
+        self.t_2 = t_2
+        self.U = U
+        self.e_A = e_A
+        self.mu = mu
+        self.OP = [np.kron(MPO_AL.Sm,MPO_AL.Id2),np.kron(MPO_AL.Sp,MPO_AL.Id2),np.kron(MPO_AL.Z,MPO_AL.Sm),np.kron(MPO_AL.Z,MPO_AL.Sp)]
+        self.coeff = [[self.t_1,self.t_2,self.t_2,0,0],
+                    [self.t_1,self.t_2,self.t_1,0,self.t_2],
+                    [0,self.t_2,self.t_1,0,self.t_2],
+                    [0,self.t_1,self.t_2,0,self.t_2],
+                    [0,self.t_1,0,0,self.t_2]]
+
+    
+    def mpo(self,p=None):
+
+        MPO = np.zeros((4,4,22,22))
+
+        MPO[:,:,0,0] = MPO_AL.Id4
+        MPO[:,:,0,1] = np.kron(MPO_AL.Sp,MPO_AL.Z)
+        MPO[:,:,0,6] = np.kron(MPO_AL.Sm,MPO_AL.Z)
+        MPO[:,:,0,11] = np.kron(MPO_AL.Id2,MPO_AL.Sp)
+        MPO[:,:,0,16] = np.kron(MPO_AL.Id2,MPO_AL.Sm)
+        MPO[:,:,0,21] = -self.mu*(np.kron(MPO_AL.Z,MPO_AL.Id2) + np.kron(MPO_AL.Id2,MPO_AL.Z))
+
+        # sublattice conditions
+        if (p-1)%5 in MPO_AL.sub_BC:
+            MPO[:,:,0,21] += self.U*np.kron(MPO_AL.Z,MPO_AL.Z)
+        
+        if (p-1)%5 in MPO_AL.sub_A:
+            MPO[:,:,0,21] += self.e_A*(np.kron(MPO_AL.Z,MPO_AL.Id2) + np.kron(MPO_AL.Id2,MPO_AL.Z))
+
+        for j in range(4):
+            for i in range(4):
+                MPO[:,:,1 +j*5 +i,2+j*5+i] = np.kron(MPO_AL.Z,MPO_AL.Z)
+
+        
+        for j in range(1,6):
+            for i in range(4):
+                MPO[:,:,j+5*i,21] = self.coeff[(p-1)%5][j-1]*self.OP[i]
+
+        MPO[:,:,21,21] = MPO_AL.Id4
+
+        return MPO
+
+    def Wl(self):
+
+        Wleft = np.zeros((4,4,22))
+
+        Wleft[:,:,0] = MPO_AL.Id4
+        Wleft[:,:,1] = np.kron(MPO_AL.Sp,MPO_AL.Z)
+        Wleft[:,:,6] = np.kron(MPO_AL.Sm,MPO_AL.Z)
+        Wleft[:,:,11] = np.kron(MPO_AL.Id2,MPO_AL.Sp)
+        Wleft[:,:,16] = np.kron(MPO_AL.Id2,MPO_AL.Sm)
+        Wleft[:,:,21] = (-self.mu + self.e_A )*(np.kron(MPO_AL.Z,MPO_AL.Id2) + np.kron(MPO_AL.Id2,MPO_AL.Z)) 
+
+        return Wleft
+
+    def Wr(self):
+
+        Wright = np.zeros((4,4,22))
+
+        for j in range(1,6):
+            for i in range(4):
+                Wright[:,:,j+5*i] = self.coeff[1][j-1]*self.OP[i]
+
+        Wright[:,:,21] = MPO_AL.Id4
+
+        return Wright

@@ -7,6 +7,7 @@ class observables():
     def __init__(self,MPS):
         self.mps = MPS
         self.L = MPS.L 
+        self.d = MPS.d
 
     def single_site(self,site,obs):
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
@@ -34,7 +35,7 @@ class observables():
         
         return ob1,ob2
     
-    def all_corr(self,path,site,obs1,obs2=None):
+    def all_corr(self,path,site,string,obs1,obs2=None):
         if obs2 == None:
             obs2 = obs1
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
@@ -44,11 +45,11 @@ class observables():
         for i in range(site+1,self.L-1):
             cont2 = np.tensordot(np.tensordot(obs2,self.mps.read(i),(0,0)),np.conj(self.mps.read(i)),((0,2),(0,2)))
             if i > site + 1:
-                cont1 = np.tensordot(cont1,self.mps.read(i-1),(0,1))
+                cont1 = np.tensordot(cont1,np.tensordot(string,self.mps.read(i-1),(0,0)),(0,1))
                 cont1 = np.tensordot(cont1,np.conj(self.mps.read(i-1)),((0,1),(1,0))) 
             
             res = np.tensordot(cont1,cont2,((0,1),(0,1)))
         
             with open(path,'a') as f:
-                f.write(f'{site} {i} {res}\n')
+                f.write(f'{site} {i} {res.real}\n')
 
