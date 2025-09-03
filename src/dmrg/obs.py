@@ -13,7 +13,7 @@ class observables():
         np.tensordot(obs,ten,(0,0))
         return np.tensordot(np.tensordot(obs,ten,(0,0)),np.conj(ten),((0,1,2),(0,1,2)))
 
-    def bound_sites(self,obs):
+    # def bound_sites(self,obs):
         
 
 

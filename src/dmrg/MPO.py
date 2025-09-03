@@ -27,7 +27,7 @@ class MPO_TFI():
         return Wleft
 
 
-    def mpo(self):
+    def mpo(self,p=None):
 
         MPO = np.zeros((2,2,3,3))
 
@@ -69,7 +69,7 @@ class MPO_ID():
 
         return Wleft
 
-    def mpo(self):
+    def mpo(self,p=None):
         MPO = np.zeros((2,2,1,1))
 
         MPO[:,:,0,0] = MPO_ID.Id
@@ -108,7 +108,7 @@ class SUSY_MPO_1D():
 
         return Wl
 
-    def mpo(self,site=None):
+    def mpo(self,p=None):
 
         MPO = np.zeros((2,2,7,7))
 
@@ -128,7 +128,7 @@ class SUSY_MPO_1D():
         
         return MPO
     
-    def Wr(self,site=None):
+    def Wr(self):
         
         Wr = np.zeros((2,2,7))
 

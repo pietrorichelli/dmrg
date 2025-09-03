@@ -23,6 +23,8 @@ class MPS():
             if b_mps2 == None:
                 b_mps2 = b_mps1
             self.write(L-1,b_mps2)
+            if L%2 == 1:
+                self.write(1,np.reshape(np.identity(4)[:,:2],(2,2,2)))
 
         if mem == 'off':
             raise ValueError("The option is not available turn the memory on")
@@ -106,7 +108,7 @@ class MPS():
         return ten
 
     def first_sweep(self):
-        half_right = [i for i in range(self.L//2,self.L-2)]
+        half_right = [i for i in range(self.L//2 +self.L%2,self.L-2)]
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(half_right+left,['r']*(self.L//2-2)+['l']*(self.L-4))
 
@@ -122,3 +124,9 @@ class MPS():
     def left_sweep(self):
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(left,['l']*(self.L-4))
+
+    def random(self):
+        ten = np.random.random((2,2,2))
+        for i in range(1,self.L-1):
+            self.write(i,np.random.random((2,2,2)))
+        self.writeS(self.L//2-1+self.L%2,np.identity(2))

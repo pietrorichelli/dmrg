@@ -97,8 +97,9 @@ class CONT():
 
     def write_boundary(self):
 
-        ten_l = np.tensordot(np.tensordot(self.mps.read(0),self.h.Wl(),(0,0)),np.conj(self.mps.read(0)),(1,0))
-        self.write(0,ten_l,'l')
+        for i in range(self.L%2+1):
+            ten_l = self.left(i)
+            self.write(i,ten_l,'l')
 
         ten_r = np.tensordot(np.tensordot(self.mps.read(self.L-1),self.h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         self.write(self.L-1,ten_r,'r')
@@ -108,3 +109,8 @@ class CONT():
     def env_prep(self,site):
         
         return self.read(site - 1,'l'),self.read(site + 2,'r')
+
+    def random(self):
+        for i in range(1,self.L//2):
+            self.add(i+self.L%2,'l')
+            self.add(self.mps.L-i-1,'r')

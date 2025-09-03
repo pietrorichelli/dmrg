@@ -27,10 +27,10 @@ class dmrg():
 
         En = np.zeros(self.L//2-1)
         
-        env_left = self.cont.left(0)
+        env_left = self.cont.left(self.L%2)
         env_right = self.cont.right(self.L-1)
 
-        for i in range(1,int(self.mps.L/2)):
+        for i in range(1,self.mps.L//2):
 
             H = EffH(env_left,env_right,self.h,site=i)
             En[i-1],grd = H.lanczos_grd()
@@ -44,17 +44,14 @@ class dmrg():
             c = c[:bound]
             r = r[:bound,:]
 
-            self.mps.write_left(i,l)
+            self.mps.write_left(i+self.L%2,l)
             self.mps.write_right(self.mps.L-i-1,r)
             
-            env_left = self.cont.add(i,'l')
+            env_left = self.cont.add(i+self.L%2,'l')
             env_right = self.cont.add(self.mps.L-i-1,'r')
             
-        
-        self.mps.writeS(i,np.diag(c))
-        if i > 0:
-            self.mps.delete(i-1)
-            
+        self.mps.writeS(i+self.L%2,np.diag(c))
+
         return En
 
     def step2sites(self,site,dir,exc='off',stage=None):
