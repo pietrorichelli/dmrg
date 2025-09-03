@@ -100,7 +100,7 @@ class MPS():
         ten = np.zeros((d,a,int(b/d)),dtype='complex')
 
         for i0 in range(d):
-            for i2 in range(int(b/2)):
+            for i2 in range(int(b/d)):
                 ten[i0,:,i2] = mat[:,i0*int(b/d)+i2]
 
         return ten
