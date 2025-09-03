@@ -10,13 +10,30 @@ class observables():
 
     def single_site(self,site,obs):
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
-        np.tensordot(obs,ten,(0,0))
         return np.tensordot(np.tensordot(obs,ten,(0,0)),np.conj(ten),((0,1,2),(0,1,2)))
 
-    # def bound_sites(self,obs):
+    def bound_left(self,site,obs):
+        tenS = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
+
+        ob1 = np.tensordot(np.tensordot(self.mps.read(0),obs,(0,0)),np.conj(self.mps.read(0)),(0,0))
+        ob1 = np.tensordot(ob1,tenS,(0,1))
+        ob1 = np.tensordot(ob1,np.conj(tenS),((0,1),(1,0)))
+        ob1 = np.trace(ob1)
+        ob2 = np.tensordot(np.tensordot(obs,tenS,(0,0)),np.conj(tenS),((0,1,2),(0,1,2)))
+
+        return ob1,ob2
+
+    def bound_right(self,site,obs):
+        tenS = np.tensordot(self.mps.read(site),self.mps.readS(site-1),(1,0)) 
+
+        ob1 = np.tensordot(np.tensordot(obs,tenS,(0,0)),np.conj(tenS),((0,1,2),(0,1,2)))
+        ob2 = np.tensordot(np.tensordot(self.mps.read(self.L-1),obs,(0,0)),np.conj(self.mps.read(self.L-1)),(0,0))
+        ob2 = np.tensordot(ob2,tenS,(0,1))
+        ob2 = np.tensordot(ob2,np.conj(tenS),((0,1),(1,0)))
+        ob2 = np.trace(ob2)
         
-
-
+        return ob1,ob2
+    
     def all_corr(self,path,site,obs1,obs2=None):
         if obs2 == None:
             obs2 = obs1
