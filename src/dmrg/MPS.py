@@ -7,7 +7,7 @@ class MPS():
         Class for an Matrix product State
     """
 
-    def __init__(self,L,mem='on',path='MPS',d=2,b_mps1=np.identity(2),b_mps2=None):
+    def __init__(self,L,mem='on',path='MPS',d=2):
         self.L = L
         self.path = path
         self.d = d
@@ -19,12 +19,10 @@ class MPS():
             os.mkdir(path+'/S')
             for i in range(L):
                 open(path+f'/ten_{i}.dat','w')
-            self.write(0,b_mps1)
-            if b_mps2 == None:
-                b_mps2 = b_mps1
-            self.write(L-1,b_mps2)
+            self.write(0,np.identity(d))
+            self.write(L-1,np.identity(d))
             if L%2 == 1:
-                self.write(1,np.reshape(np.identity(4)[:,:2],(2,2,2)))
+                self.write(1,np.reshape(np.identity(d**2)[:,:d],(d,d,d)))
 
         if mem == 'off':
             raise ValueError("The option is not available turn the memory on")
@@ -126,7 +124,7 @@ class MPS():
         return zip(left,['l']*(self.L-4))
 
     def random(self):
-        ten = np.random.random((2,2,2))
+        ten = np.random.random((self.d,self.d,self.d))
         for i in range(1,self.L-1):
-            self.write(i,np.random.random((2,2,2)))
-        self.writeS(self.L//2-1+self.L%2,np.identity(2))
+            self.write(i,ten)
+        self.writeS(self.L//2-1+self.L%2,np.identity(self.d))
