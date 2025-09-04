@@ -36,7 +36,7 @@ class observables():
         return ob1,ob2
     
     def all_corr(self,path,site,string,obs1,obs2=None):
-        if obs2.any() == None:
+        if obs2 is None:
             obs2 = obs1
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
         
@@ -53,3 +53,16 @@ class observables():
             with open(path,'a') as f:
                 f.write(f'{site} {i} {res.real}\n')
 
+    def two_sites(self,site1,site2,string,obs1,obs2=None):
+        if obs2 is None:
+            obs2 = obs1
+
+        ten = np.tensordot(self.mps.read(site1),self.mps.readS(site1),(2,0))
+        cont1 = np.tensordot(np.tensordot(obs1,ten,(0,0)),np.conj(ten),((0,1),(0,1)))
+        cont2 = np.tensordot(np.tensordot(obs2,self.mps.read(site2),(0,0)),np.conj(self.mps.read(site2)),((0,2),(0,2)))
+        
+        for i in range(site1+1,site2):
+            cont1 = np.tensordot(cont1,np.tensordot(string,self.mps.read(i),(0,0)),(0,1))
+            cont1 = np.tensordot(cont1,np.conj(self.mps.read(i)),((0,1),(1,0))) 
+
+        return np.tensordot(cont1,cont2,((0,1),(0,1)))
