@@ -31,7 +31,6 @@ class observables():
         ob2 = np.tensordot(np.tensordot(self.mps.read(self.L-1),obs,(0,0)),np.conj(self.mps.read(self.L-1)),(0,0))
         ob2 = np.tensordot(ob2,tenS,(0,1))
         ob2 = np.tensordot(ob2,np.conj(tenS),((0,1),(1,0)))
-        ob2 = np.trace(ob2)
         
         return ob1,ob2
     
@@ -42,6 +41,8 @@ class observables():
         
         cont1 = np.tensordot(np.tensordot(obs1,ten,(0,0)),np.conj(ten),((0,1),(0,1)))
         
+        open(path,'w')
+        
         for i in range(site+1,self.L-1):
             cont2 = np.tensordot(np.tensordot(obs2,self.mps.read(i),(0,0)),np.conj(self.mps.read(i)),((0,2),(0,2)))
             if i > site + 1:
@@ -51,7 +52,7 @@ class observables():
             res = np.tensordot(cont1,cont2,((0,1),(0,1)))
         
             with open(path,'a') as f:
-                f.write(f'{site} {i} {res.real}\n')
+                f.write(f'{site} {i} {res}\n')
 
     def two_sites(self,site1,site2,string,obs1,obs2=None):
         if obs2 is None:
