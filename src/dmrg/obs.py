@@ -41,7 +41,6 @@ class observables():
         
         cont1 = np.tensordot(np.tensordot(obs1,ten,(0,0)),np.conj(ten),((0,1),(0,1)))
         
-        open(path,'w')
         
         for i in range(site+1,self.L-1):
             cont2 = np.tensordot(np.tensordot(obs2,self.mps.read(i),(0,0)),np.conj(self.mps.read(i)),((0,2),(0,2)))
