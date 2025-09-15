@@ -2,7 +2,7 @@ import numpy as np
 
 from .MPS import MPS
 from .cont import CONT
-from dmrg_src.lanczos import EffH
+from .lanczos import EffH
 
 class dmrg():
     """
