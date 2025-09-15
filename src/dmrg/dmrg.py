@@ -2,7 +2,7 @@ import numpy as np
 
 from .MPS import MPS
 from .cont import CONT
-from .lanczos import EffH
+from dmrg_src.lanczos import EffH
 
 class dmrg():
     """
@@ -67,12 +67,12 @@ class dmrg():
             init_vec = np.tensordot(np.tensordot(self.mps.readS(site-1),self.mps.read(site),(0,1)),self.mps.read(site+1),(2,1))
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
-
-        # En_pre = np.conj(init_vec)@H.matvec(init_vec)
         
         if stage == None:
+            print('Before ',np.conj(init_vec)@H.matvec(init_vec))
             En,grd = H.lanczos_grd(psi0=None,exc=exc)
             grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
+            print('After ', En.real,' Diff ',En - np.conj(grd_state)@H.matvec(grd_state))
         if stage == 'Final':
             grd_state = 1/np.sqrt(init_vec@np.conj(init_vec))*init_vec
             En = np.conj(grd_state)@H.matvec(grd_state)
@@ -81,7 +81,7 @@ class dmrg():
 
         l,c,r = np.linalg.svd(grd_state,full_matrices=False)
         
-        bound = min(len(c[c>self.cut]),self.chi)
+        bound = min(len(c[c**2>self.cut]),self.chi)
         l = l[:,:bound]
         c = c[:bound]
         r = r[:bound,:]
