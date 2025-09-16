@@ -2,7 +2,7 @@ import numpy as np
 
 class EffH():
 
-    def __init__(self,L,R,H,site,k=300):
+    def __init__(self,L,R,H,site,k=1000):
         self.L = L 
         self.R = R 
         self.H = H 

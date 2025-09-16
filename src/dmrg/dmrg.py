@@ -12,7 +12,7 @@ class dmrg():
                 - cont: Class DMRG.contractions
     """
 
-    def __init__(self,cont,chi=100,cut=1e-12):
+    def __init__(self,cont,chi=100,cut=1e-12,k=1000):
         self.cont = cont
         self.mps = cont.mps
         self.chi = chi
@@ -21,6 +21,7 @@ class dmrg():
         self.count = cont.count
         self.cut = cut
         self.d = self.mps.d
+        self.k = k
 
     
     def infinite(self):
@@ -58,7 +59,7 @@ class dmrg():
 
         env_left,env_right = self.cont.env_prep(site)
     
-        H = EffH(env_left,env_right,self.h,site=site)
+        H = EffH(env_left,env_right,self.h,site=site,k=self.k)
 
         if dir == 'l' or dir == 'bl':
             init_vec = np.tensordot(self.mps.read(site),np.tensordot(self.mps.read(site+1),self.mps.readS(site+1),(2,0)),(2,1))
@@ -69,10 +70,9 @@ class dmrg():
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
         
         if stage == None:
-            print('Before ',np.conj(init_vec)@H.matvec(init_vec))
             En,grd = H.lanczos_grd(psi0=None,exc=exc)
             grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
-            print('After ', En.real,' Diff ',En - np.conj(grd_state)@H.matvec(grd_state))
+            
         if stage == 'Final':
             grd_state = 1/np.sqrt(init_vec@np.conj(init_vec))*init_vec
             En = np.conj(grd_state)@H.matvec(grd_state)
