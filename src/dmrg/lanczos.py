@@ -62,7 +62,7 @@ class EffH():
             psi = psi - alpha * vecs[-1] - beta * vecs[-2]
             T[i, i] = alpha
             T[i-1, i] = T[i, i-1] = beta    
-        return T, np.array(vecs).T
+        return T, (np.array(vecs).T).conj()
             
     def lanczos_grd(self,psi0=None,exc='off'):
         if psi0 is None:
