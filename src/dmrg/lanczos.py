@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse.linalg import eigsh
 
 class EffH():
 
@@ -68,7 +69,7 @@ class EffH():
         if psi0 is None:
             psi0 = np.random.rand(self.c1*self.c2*self.d**2)
         T, vecs = self.lanc_iter(psi0,exc=exc)
-        E, v = np.linalg.eigh(T)
+        E, v = eigsh(T,k=10,which='SA')
         result = vecs @ v[:, np.argmin(E)]
         if exc == 'off':
             E = min(E)
