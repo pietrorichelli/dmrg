@@ -5,7 +5,7 @@ from scipy.sparse.linalg import ArpackNoConvergence
 
 class EffH():
 
-    def __init__(self,L,R,H,site,k=1000):
+    def __init__(self,L,R,H,site,k=300):
         self.L = L 
         self.R = R 
         self.H = H 
@@ -75,22 +75,12 @@ class EffH():
         try:
             E,v = eigh_tridiagonal(np.diag(T),np.diag(T,k=1),select='i',select_range=(0,2))
             result = vecs @ v[:, np.argmin(E)]
-
             if exc == 'off':
                 E = min(E)
+                
         except ArpackNoConvergence as err:
             print('Lanczos did not converge !!!')
             E = psi0.conj()@self.matvec(psi0)
             result = psi0
 
         return E, result
-        
-    # def lanczos_grd(self,psi0=None,exc='off'):
-    #     if psi0 is None:
-    #         psi0 = np.random.rand(self.c1*self.c2*self.d**2)
-    #     T, vecs = self.lanc_iter(psi0,exc=exc)
-    #     E, v = eigsh(T,which='SA')
-    #     result = vecs @ v[:, np.argmin(E)]
-    #     if exc == 'off':
-    #         E = min(E)
-    #     return E, result

@@ -13,7 +13,7 @@ class dmrg():
                 - cont: Class DMRG.contractions
     """
 
-    def __init__(self,cont,chi=100,cut=1e-12,k=1000):
+    def __init__(self,cont,chi=100,cut=1e-12,k=300):
         self.cont = cont
         self.mps = cont.mps
         self.chi = chi
