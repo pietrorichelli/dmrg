@@ -45,7 +45,7 @@ class CONT():
         if dir != 'l' and dir != 'r':
             raise ValueError('the direction needs to be either l or r !!!')
 
-        tenmap = np.memmap(self.path+self.dir[dir]+f'/cont_{site}.dat',dtype='complex',mode='w+',shape=ten.shape)
+        tenmap = np.memmap(self.path+self.dir[dir]+f'/cont_{site}.dat',dtype='complex256',mode='w+',shape=ten.shape)
         tenmap[:] = ten
         with open(self.path+self.dir[dir]+f'/cont_{site}.txt','w') as f:
             f.writelines(repr(ten.shape))
@@ -56,7 +56,7 @@ class CONT():
         return eval(s.read())
 
     def read(self,site,dir):
-        return np.memmap(self.path+self.dir[dir]+f'/cont_{site}.dat',dtype='complex',mode='r',shape=self.shape(site,dir))
+        return np.memmap(self.path+self.dir[dir]+f'/cont_{site}.dat',dtype='complex256',mode='r',shape=self.shape(site,dir))
 
     def add(self,site,dir):
         ten = self.read(site-(-1)**self.count[dir],dir)

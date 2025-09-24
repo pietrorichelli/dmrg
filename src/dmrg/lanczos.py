@@ -1,5 +1,7 @@
 import numpy as np
-from scipy.sparse.linalg import eigsh
+from scipy.linalg import eigh_tridiagonal
+from scipy.sparse.linalg import ArpackNoConvergence
+
 
 class EffH():
 
@@ -64,13 +66,31 @@ class EffH():
             T[i, i] = alpha
             T[i-1, i] = T[i, i-1] = beta    
         return T, (np.array(vecs).T).conj()
-            
+    
     def lanczos_grd(self,psi0=None,exc='off'):
         if psi0 is None:
             psi0 = np.random.rand(self.c1*self.c2*self.d**2)
         T, vecs = self.lanc_iter(psi0,exc=exc)
-        E, v = eigsh(T,which='SA')
-        result = vecs @ v[:, np.argmin(E)]
-        if exc == 'off':
-            E = min(E)
+
+        try:
+            E,v = eigh_tridiagonal(np.diag(T),np.diag(T,k=1),select='i',select_range=(0,2))
+            result = vecs @ v[:, np.argmin(E)]
+
+            if exc == 'off':
+                E = min(E)
+        except ArpackNoConvergence as err:
+            print('Lanczos did not converge !!!')
+            E = psi0.conj()@self.matvec(psi0)
+            result = psi0
+
         return E, result
+        
+    # def lanczos_grd(self,psi0=None,exc='off'):
+    #     if psi0 is None:
+    #         psi0 = np.random.rand(self.c1*self.c2*self.d**2)
+    #     T, vecs = self.lanc_iter(psi0,exc=exc)
+    #     E, v = eigsh(T,which='SA')
+    #     result = vecs @ v[:, np.argmin(E)]
+    #     if exc == 'off':
+    #         E = min(E)
+    #     return E, result

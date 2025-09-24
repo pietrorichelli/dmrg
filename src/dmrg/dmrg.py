@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import svd
 
 from .MPS import MPS
 from .cont import CONT
@@ -37,7 +38,7 @@ class dmrg():
             En[i-1],grd = H.lanczos_grd()
 
             mat = np.reshape(grd,(H.c1*H.d,H.d*H.c2))
-            l,c,r = np.linalg.svd(mat)
+            l,c,r = svd(mat,full_matrices=False)
 
             bound = min(len(c[c>self.cut]),self.chi)
            
@@ -79,7 +80,7 @@ class dmrg():
         
         grd_state = np.reshape(grd_state,(H.c1*H.d,H.d*H.c2))
 
-        l,c,r = np.linalg.svd(grd_state,full_matrices=False)
+        l,c,r = svd(grd_state,full_matrices=False)
         
         bound = min(len(c[c**2>self.cut]),self.chi)
         l = l[:,:bound]
@@ -105,7 +106,7 @@ class dmrg():
 
     def remish(ten):
         d0,d1,d2,d3 = ten.shape
-        res = np.zeros((d1,d0,d2,d3),dtype='complex')
+        res = np.zeros((d1,d0,d2,d3),dtype='complex256')
         for i0 in range(d0):
             for i1 in range(d1):
                 res[i1,i0,:,:] = ten[i0,i1,:,:]

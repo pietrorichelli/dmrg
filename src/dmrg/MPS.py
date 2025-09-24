@@ -36,14 +36,14 @@ class MPS():
 
 
     def write(self,i,ten):
-        f1 = np.memmap(self.path+f'/ten_{i}.dat',dtype='complex',mode='w+',shape=ten.shape)
+        f1 = np.memmap(self.path+f'/ten_{i}.dat',dtype='complex256',mode='w+',shape=ten.shape)
         f1[:] = ten
         with open(self.path+f'/ten_{i}.txt','w') as f2: 
             f2.writelines(repr(ten.shape))
         del f1,f2
 
     def writeS(self,i,S):
-        f1 = np.memmap(self.path+f'/S/{i}-{i+1}.dat',dtype='complex',mode='w+',shape=S.shape)
+        f1 = np.memmap(self.path+f'/S/{i}-{i+1}.dat',dtype='complex256',mode='w+',shape=S.shape)
         f1[:] = S
         with open(self.path+f'/S/{i}-{i+1}.txt','w') as f2: 
             f2.writelines(repr(S.shape))
@@ -58,10 +58,10 @@ class MPS():
         return eval(s.read())
 
     def read(self,i):
-        return np.memmap(self.path+f'/ten_{i}.dat',dtype='complex',mode='r',shape=self.shape(i))
+        return np.memmap(self.path+f'/ten_{i}.dat',dtype='complex256',mode='r',shape=self.shape(i))
     
     def readS(self,i):
-        return np.memmap(self.path+f'/S/{i}-{i+1}.dat',dtype='complex',mode='r',shape=self.shapeS(i))
+        return np.memmap(self.path+f'/S/{i}-{i+1}.dat',dtype='complex256',mode='r',shape=self.shapeS(i))
     
     def write_bound(self,ten_l,ten_r=None):
         if ten_r == None:
@@ -84,7 +84,7 @@ class MPS():
         
         d = self.d
         a,b = mat.shape
-        ten = np.zeros((d,int(a/d),b),dtype='complex')
+        ten = np.zeros((d,int(a/d),b),dtype='complex256')
 
         for i0 in range(d):
             for i1 in range(int(a/d)):
@@ -97,7 +97,7 @@ class MPS():
 
         d = self.d
         a,b = mat.shape
-        ten = np.zeros((d,a,int(b/d)),dtype='complex')
+        ten = np.zeros((d,a,int(b/d)),dtype='complex256')
 
         for i0 in range(d):
             for i2 in range(int(b/d)):

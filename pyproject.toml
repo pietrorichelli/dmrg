@@ -22,7 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-dependencies = []
+dependencies = ["os","shutil","numpy","scipy"]
 
 [project.urls]
 Documentation = "https://github.com/pietrorichelli/dmrg#readme"
