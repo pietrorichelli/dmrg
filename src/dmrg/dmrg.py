@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import svd
+from itertools import product
 
 from .MPS import MPS
 from .cont import CONT
@@ -105,11 +106,12 @@ class dmrg():
 
 
     def remish(ten):
-        d0,d1,d2,d3 = ten.shape
+        d0,d1,d2,d3 = dims = ten.shape
+        ranges = [range(i) for i in dims[:2]]
         res = np.zeros((d1,d0,d2,d3),dtype='complex256')
-        for i0 in range(d0):
-            for i1 in range(d1):
-                res[i1,i0,:,:] = ten[i0,i1,:,:]
+
+        for i0,i1 in product(*ranges):
+            res[i1,i0,:,:] = ten[i0,i1,:,:]
 
         return res
     
