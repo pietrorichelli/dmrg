@@ -70,6 +70,9 @@ class dmrg():
             init_vec = np.tensordot(np.tensordot(self.mps.readS(site-1),self.mps.read(site),(0,1)),self.mps.read(site+1),(2,1))
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
+
+        grd_pre = 1/np.sqrt(init_vec@np.conj(init_vec))*init_vec
+        En_pre = np.conj(grd_pre)@H.matvec(grd_pre)
         
         if stage == None:
             En,grd = H.lanczos_grd(psi0=None,exc=exc)
@@ -102,7 +105,7 @@ class dmrg():
             if site == 1:
                 self.cont.add(site,'l')
         
-        return En, -c**2@np.log(c**2)
+        return En, -c**2@np.log(c**2), En_pre
 
 
     def remish(ten):
