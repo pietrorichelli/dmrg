@@ -107,6 +107,12 @@ class EffH():
             if exc == 'off':
                 E = min(E)
                 
+        except ValueError as err:
+            E,v = np.linalg.eigh(T)
+            result = vecs @ v[:, np.argmin(E)]
+            if exc == 'off':
+                E = min(E)
+
         except ArpackNoConvergence as err:
             print('Lanczos did not converge !!!')
             E = psi0.conj()@self.matvec(psi0)

@@ -28,9 +28,9 @@ class observables():
         tenS = np.tensordot(self.mps.read(site),self.mps.readS(site-1),(1,0)) 
 
         ob1 = np.tensordot(np.tensordot(obs,tenS,(0,0)),np.conj(tenS),((0,1,2),(0,1,2)))
-        ob2 = np.tensordot(np.tensordot(self.mps.read(self.L-1),obs,(0,0)),np.conj(self.mps.read(self.L-1)),(0,0))
+        ob2 = np.tensordot(np.tensordot(self.mps.read(self.L-1),obs,(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         ob2 = np.tensordot(ob2,tenS,(0,1))
-        ob2 = np.tensordot(ob2,np.conj(tenS),((0,1),(1,0)))
+        ob2 = np.tensordot(ob2,np.conj(tenS),((0,1,2),(1,0,2)))
         
         return ob1,ob2
     
