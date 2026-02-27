@@ -10,3 +10,6 @@ __pycache__/
 
 dev/dmrg/
 
+benchmark*
+
+examples/OUT/

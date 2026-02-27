@@ -66,3 +66,24 @@ class observables():
             cont1 = np.tensordot(cont1,np.conj(self.mps.read(i)),((0,1),(1,0))) 
 
         return np.tensordot(cont1,cont2,((0,1),(0,1)))
+
+    def left_EE(self):
+        d0,d1,d2 = self.mps.read(2).shape
+        ten1 = np.einsum('ij,kli->lkj',self.mps.readS(2),self.mps.read(2))
+        mat1 = np.reshape(ten1,(d1,d0*d2))
+        l1,c1,r1 = np.linalg.svd(mat1,full_matrices=False)
+
+        d0,d1,d2 = self.mps.read(1).shape
+        # ten0 = np.tensordot(l1@np.diag(c1),self.mps.read(1),(0,2))
+        ten0 = np.einsum('ij,kli->lkj',l1@np.diag(c1),self.mps.read(1))
+        mat0 = np.reshape(ten0,(d1,d0*d2))
+        l0,c0,r0 = np.linalg.svd(mat0,full_matrices=False)
+
+        return -c0**2@np.log(c0**2),-c1**2@np.log(c1**2)
+
+    def right_EE(self):
+        d0,d1,d2 = self.mps.read(self.L-2).shape
+        ten = np.tensordot(self.mps.readS(self.L-3),self.mps.read(self.L-2),(0,1))
+        mat = np.reshape(ten,(d0*d1,d2))
+        l,c,r = np.linalg.svd(mat,full_matrices=False)
+        return -c**2@np.log(c**2)

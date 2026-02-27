@@ -3,7 +3,7 @@ from scipy.linalg import svd
 from itertools import product
 
 from .MPS import MPS
-from .cont import CONT
+from .CONT import CONT
 from .lanczos import EffH
 
 class dmrg():
