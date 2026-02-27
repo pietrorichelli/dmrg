@@ -14,7 +14,7 @@ class dmrg():
                 - cont: Class DMRG.contractions
     """
 
-    def __init__(self,cont,chi=100,cut=1e-12,k=300):
+    def __init__(self,cont,chi=100,cut=1e-8,k=300):
         self.cont = cont
         self.mps = cont.mps
         self.chi = chi
@@ -86,7 +86,7 @@ class dmrg():
 
         l,c,r = svd(grd_state,full_matrices=False)
         
-        bound = min(len(c[c**2>self.cut]),self.chi)
+        bound = min(len(c[c>self.cut]),self.chi)
         l = l[:,:bound]
         c = c[:bound]
         r = r[:bound,:]
