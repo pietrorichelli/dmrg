@@ -38,13 +38,13 @@ for h_x in par:
     os.mkdir(path_par)
 
     # initialise the MPS for the indicated chain length
-    mps = MPS(L)
+    mps = MPS(L,max_ram=4) # max_ram sets how much memory can be used for the MPS in GB the standard is 4 GB
 
     # define the MPO 
     h = MPO_TFI(J=1,h_x=1,pol='tot')
 
     # define the contractions (it needs an mps and a MPO class as imputs)
-    cont = CONT(mps=mps,H=h)
+    cont = CONT(mps=mps,H=h,max_ram=4) # max_ram sets how much memory can be used for the CONTRACTIONS in GB the standard is 4 GB
 
     # Initialize your dmrg (set low bond dimension to make the system grow faster)
     sys = dmrg(cont=cont,chi=10,cut=1e-12)
