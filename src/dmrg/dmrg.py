@@ -14,7 +14,7 @@ class dmrg():
                 - cont: Class DMRG.contractions
     """
 
-    def __init__(self,cont,chi=100,cut=1e-8,k=300):
+    def __init__(self,cont,chi=100,cut=1e-8,k=300,inc=20,err=1e-8,exc='off'):
         self.cont = cont
         self.mps = cont.mps
         self.chi = chi
@@ -24,6 +24,9 @@ class dmrg():
         self.cut = cut
         self.d = self.mps.d
         self.k = k
+        self.inc = inc 
+        self.err = err 
+        self.exc = exc
 
     
     def infinite(self):
@@ -57,7 +60,7 @@ class dmrg():
 
         return En
 
-    def step2sites(self,site,dir,exc='off',stage=None):
+    def step2sites(self,site,dir,stage=None):
 
         env_left,env_right = self.cont.env_prep(site)
     
@@ -75,8 +78,13 @@ class dmrg():
         En_pre = np.conj(grd_pre)@H.matvec(grd_pre)
         
         if stage == None:
-            En,grd = H.lanczos_grd(psi0=None,exc=exc)
+            En,grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
             grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
+
+            if En_pre - np.conj(grd_state)@H.matvec(grd_state) > self.err:
+                self.k += self.inc
+                print(f'Increase k to {self.k}')
+                En, grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
             
         if stage == 'Final':
             grd_state = 1/np.sqrt(init_vec@np.conj(init_vec))*init_vec

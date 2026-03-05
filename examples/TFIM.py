@@ -47,7 +47,7 @@ for h_x in par:
     cont = CONT(mps=mps,H=h,max_ram=4) # max_ram sets how much memory can be used for the CONTRACTIONS in GB the standard is 4 GB
 
     # Initialize your dmrg (set low bond dimension to make the system grow faster)
-    sys = dmrg(cont=cont,chi=10,cut=1e-12)
+    sys = dmrg(cont=cont,chi=10,cut=1e-8)
 
     # Grow the system up to the desired dimension
     En = sys.infinite()
