@@ -3,6 +3,8 @@ import psutil
 import shutil
 import numpy as np
 
+from .OptimizedTensorContractor import OptimizedTensorContractor
+
 class CONT:
     """
     Contraction environment for DMRG.
@@ -81,6 +83,8 @@ class CONT:
 
     dir = {'l':'/LEFT','r':'/RIGHT'}
     count = {'l':0,'r':1}
+    # add_dict = {'l':"",
+    #             'r':""}
 
     def __init__(self,mps,H,path='CONT',max_ram=4):
         self.mps = mps
@@ -94,6 +98,7 @@ class CONT:
         self.ram.max =  max_ram*1024**3 
         self.ram.current_size = 0
 
+        self.OTC = OptimizedTensorContractor()
         pop_dict = {'l':self.ram.LEFT,'r':self.ram.RIGHT}
 
     def write(self,i,ten,dir):
@@ -122,10 +127,13 @@ class CONT:
         """
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(0),h.Wl(),(0,0)),np.conj(self.mps.read(0)),(1,0))
+        # res = h.Wl().transpose((1, 0, 2))
         for i in range(1,site+1):
-            res = np.tensordot(res,self.mps.read(i),(0,1))
-            res = np.tensordot(res,h.mpo(p=i),([0,2],[2,0]))
-            res = np.tensordot(res,np.conj(self.mps.read(i)),([0,2],[1,0]))
+
+            res = self.OTC("abc,dae,dfbg,fch->egh",*(res,self.mps.read(i),h.mpo(p=i),np.conj(self.mps.read(i))))
+            # res = np.tensordot(res,self.mps.read(i),(0,1))
+            # res = np.tensordot(res,h.mpo(p=i),([0,2],[2,0]))
+            # res = np.tensordot(res,np.conj(self.mps.read(i)),([0,2],[1,0]))
 
         return res
 
@@ -136,9 +144,11 @@ class CONT:
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(self.L-1),h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         for i in range(1,self.L-site):
-            res = np.tensordot(res,self.mps.read(self.L-1-i),(0,2))
-            res = np.tensordot(res,h.mpo(p=self.L-1-i),([0,2],[3,0]))
-            res = np.tensordot(res,np.conj(self.mps.read(self.L-1-i)),([0,2],[2,0]))
+
+            res = self.OTC("abc,dea,dfgb,fhc->egh",*(res,self.mps.read(self.L-1-i),h.mpo(p=self.L-1-i),np.conj(self.mps.read(self.L-1-i))))
+            # res = np.tensordot(res,self.mps.read(self.L-1-i),(0,2))
+            # res = np.tensordot(res,h.mpo(p=self.L-1-i),([0,2],[3,0]))
+            # res = np.tensordot(res,np.conj(self.mps.read(self.L-1-i)),([0,2],[2,0]))
         
         return res
 

@@ -5,6 +5,8 @@ from itertools import product
 from .MPS import MPS
 from .CONT import CONT
 from .lanczos import EffH
+from .OptimizedTensorContractor import OptimizedTensorContractor
+
 
 class dmrg():
     """
@@ -27,6 +29,7 @@ class dmrg():
         self.inc = inc 
         self.err = err 
         self.exc = exc
+        self.OTC = OptimizedTensorContractor()
 
     
     def infinite(self):
@@ -67,10 +70,10 @@ class dmrg():
         H = EffH(env_left,env_right,self.h,site=site,k=self.k)
 
         if dir == 'l' or dir == 'bl':
-            init_vec = np.tensordot(self.mps.read(site),np.tensordot(self.mps.read(site+1),self.mps.readS(site+1),(2,0)),(2,1))
-            init_vec = dmrg.remish(init_vec)
+            init_vec = self.OTC.contract("abc,dce,ef->badf",*(self.mps.read(site),self.mps.read(site+1),self.mps.readS(site+1)))
         if dir == 'r' or dir == 'br':
-            init_vec = np.tensordot(np.tensordot(self.mps.readS(site-1),self.mps.read(site),(0,1)),self.mps.read(site+1),(2,1))
+        
+            init_vec = self.OTC.contract("ab,cbd,edf->acef",*(self.mps.readS(site-1),self.mps.read(site),self.mps.read(site+1)))
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
 
@@ -81,7 +84,7 @@ class dmrg():
             En,grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
             grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
 
-            if En_pre - np.conj(grd_state)@H.matvec(grd_state) > self.err:
+            if np.conj(grd_state)@H.matvec(grd_state) - En_pre > self.err:
                 self.k += self.inc
                 print(f'Increase k to {self.k}')
                 En, grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
@@ -116,13 +119,5 @@ class dmrg():
         return En, -c**2@np.log(c**2), En_pre
 
 
-    def remish(ten):
-        d0,d1,d2,d3 = dims = ten.shape
-        ranges = [range(i) for i in dims[:2]]
-        res = np.zeros((d1,d0,d2,d3),dtype='complex256')
-
-        for i0,i1 in product(*ranges):
-            res[i1,i0,:,:] = ten[i0,i1,:,:]
-
-        return res
+        
     

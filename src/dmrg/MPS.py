@@ -126,31 +126,14 @@ class MPS():
         if os.path.isfile(self.path+f'/S/{i}-{i+1}.dat'):
             os.remove(self.path+f'/S/{i}-{i+1}.dat')
             os.remove(self.path+f'/S/{i}-{i+1}.txt')
-            
+
     def left_ten(self,mat):
-        
-        d = self.d
-        a,b = mat.shape
-        ten = np.zeros((d,int(a/d),b),dtype='complex')
+        # Reshape (a, b) → (a//d, d, b), then transpose to (d, a//d, b)
+        return mat.reshape(mat.shape[0]//self.d, self.d, mat.shape[1]).transpose(1, 0, 2)
 
-        for i0 in range(d):
-            for i1 in range(int(a/d)):
-                ten[i0,i1,:] = mat[i1*d+i0,:]
-
-        return ten
-
-    
     def right_ten(self,mat):
-
-        d = self.d
-        a,b = mat.shape
-        ten = np.zeros((d,a,int(b/d)),dtype='complex')
-
-        for i0 in range(d):
-            for i2 in range(int(b/d)):
-                ten[i0,:,i2] = mat[:,i0*int(b/d)+i2]
-
-        return ten
+        # Reshape (a, b) → (a, d, b//d), then transpose to (d, a, b//d)
+        return mat.reshape(mat.shape[0], self.d, mat.shape[1]//self.d).transpose(1, 0, 2)
 
     def first_sweep(self):
         half_right = [i for i in range(self.L//2 +self.L%2,self.L-2)]
