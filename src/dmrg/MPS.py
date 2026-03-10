@@ -80,6 +80,7 @@ class MPS():
                 Initialize directory structure and boundary tensors
     """
     
+    # Initialize MPS with chain length L, physical dimension d, and RAM/disk storage backends
     def __init__(self,L,d=2,path='MPS',max_ram=4):
         self.L = L 
         self.d = d
@@ -90,6 +91,7 @@ class MPS():
         self.ram.max = max_ram*1024**3
         self.ram.current_size = 0
 
+    # Write tensor at position i to RAM or disk based on memory threshold
     def write(self,i,ten):
         # Calculate tensor size in bytes
         tensor_size = ten.nbytes
@@ -104,55 +106,68 @@ class MPS():
         except KeyError:
             self.disk.write(i,ten)
 
+    # Read tensor from position i (RAM first, fallback to disk)
     def read(self,i):
         try: 
             return self.ram.read(i)
         except KeyError:
             return self.disk.read(i)
 
+    # Write bond singular values (diagonal matrix) at position i
     def writeS(self,i,ten):
         self.S.update({i:ten})
     
+    # Read bond singular values from position i
     def readS(self,i):
         return self.S[i]
 
+    # Convert matrix to left-canonical tensor form and write to position i
     def write_left(self,i,mat):
         self.write(i,self.left_ten(mat))
 
+    # Convert matrix to right-canonical tensor form and write to position i
     def write_right(self,i,mat):
         self.write(i,self.right_ten(mat))
 
+    # Delete singular value files at bond i
     def delete(self,i):
         if os.path.isfile(self.path+f'/S/{i}-{i+1}.dat'):
             os.remove(self.path+f'/S/{i}-{i+1}.dat')
             os.remove(self.path+f'/S/{i}-{i+1}.txt')
 
+    # Reshape matrix into left-canonical tensor form (physical index first)
     def left_ten(self,mat):
         # Reshape (a, b) → (a//d, d, b), then transpose to (d, a//d, b)
         return mat.reshape(mat.shape[0]//self.d, self.d, mat.shape[1]).transpose(1, 0, 2)
 
+    # Reshape matrix into right-canonical tensor form (physical index first)
     def right_ten(self,mat):
         # Reshape (a, b) → (a, d, b//d), then transpose to (d, a, b//d)
         return mat.reshape(mat.shape[0], self.d, mat.shape[1]//self.d).transpose(1, 0, 2)
 
+    # Iterator for initial half-sweep: right then left from center
     def first_sweep(self):
         half_right = [i for i in range(self.L//2 +self.L%2,self.L-2)]
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(half_right+left,['r']*(self.L//2-2)+['l']*(self.L-4))
 
+    # Iterator for full sweep: right then left
     def sweep(self):
         right = [i for i in range(2,self.L-2)]
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(right+left,['r']*(self.L-4)+['l']*(self.L-4))
 
+    # Iterator for right-moving sweep only
     def right_sweep(self):
         right = [i for i in range(2,self.L-2)]
         return zip(right,['r']*(self.L-4))
 
+    # Iterator for left-moving sweep only
     def left_sweep(self):
         left = [self.L-4-i for i in range(self.L-4)]
         return zip(left,['l']*(self.L-4))
 
+    # Initialize MPS with random tensors across chain and identity on center bond
     def random(self):
         ten = np.random.random((self.d,self.d,self.d))
         for i in range(1,self.L-1):
@@ -160,6 +175,7 @@ class MPS():
         self.writeS(self.L//2-1+self.L%2,np.identity(self.d))
 
     class ram:
+        # RAM storage backend for in-memory tensor dictionary with automatic disk spillover
 
         def __init__(self,parent):
             self.parent = parent
@@ -179,17 +195,21 @@ class MPS():
             return self.parent.d
 
         
+        # Calculate maximum tensor size that fits in available RAM
         def max_size(self):
             mem = psutil.virtual_memory()
             
             return int(np.sqrt(mem.available/(3*16*self.L*self.d)))
 
+        # Store tensor in memory dictionary
         def write(self,i,ten):
             self.mps.update({i:ten})
         
+        # Retrieve tensor from memory dictionary
         def read(self,i):
             return self.mps[i]
         
+        # Initialize MPS dictionary with boundary identity tensors
         def empty_MPS(self):
             mps = {}
             mps.update({0:np.eye(self.d)})
@@ -197,6 +217,7 @@ class MPS():
             return mps
 
     class disk:
+        # Disk storage backend for tensors using memmap files with .dat and .txt metadata
 
         def __init__(self,parent):
             self.parent = parent
@@ -225,6 +246,7 @@ class MPS():
             if self.L%2 == 1:
                 self.write(1,np.reshape(np.eye(self.d**2)[:,:self.d],(self.d,self.d,self.d)))
 
+        # Write tensor to memmap file with shape metadata in .txt file
         def write(self,i,ten):
             f1 = np.memmap(self.path+f'/ten_{i}.dat',dtype='complex',mode='w+',shape=ten.shape)
             f1[:] = ten
@@ -233,10 +255,12 @@ class MPS():
             del f1,f2
 
         
+        # Read tensor shape metadata from .txt file
         def shape(self,i):
             s = open(self.path+f'/ten_{i}.txt','r')
             return eval(s.read())
 
 
+        # Load tensor from memmap file using shape metadata
         def read(self,i):
             return np.memmap(self.path+f'/ten_{i}.dat',dtype='complex',mode='r',shape=self.shape(i))

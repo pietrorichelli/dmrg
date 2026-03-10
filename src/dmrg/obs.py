@@ -3,16 +3,50 @@ import shutil
 import numpy as np
 
 class observables():
+    """
+    Observable computation on Matrix Product States.
+    Calculates single-site expectation values, two-point correlations,
+    entanglement entropy, and correlation functions from optimized MPS.
+    
+    Attributes:
+        mps : MPS
+            Matrix Product State for computing observables
+        L : int
+            Number of sites in the chain
+        d : int
+            Physical dimension
+    
+    Methods:
+        __init__(MPS):
+            Initialize with MPS object
+        single_site(site, obs):
+            Compute single-site expectation value <obs> at given site
+        bound_left(site, obs):
+            Compute observable with boundary at left edge up to site
+        bound_right(site, obs):
+            Compute observable with boundary at right edge down to site
+        all_corr(path, site, string, obs1, obs2):
+            Compute all correlation functions from site to right boundary, write to file
+        two_sites(site1, site2, string, obs1, obs2):
+            Compute two-point correlation <obs1(site1) string obs2(site2)>
+        left_EE():
+            Compute entanglement entropy at left-center bond
+        right_EE():
+            Compute entanglement entropy at right-center bond
+    """
 
+    # Initialize observable calculator with MPS
     def __init__(self,MPS):
         self.mps = MPS
         self.L = MPS.L 
         self.d = MPS.d
 
+    # Compute single-site expectation value <obs> at given site
     def single_site(self,site,obs):
         ten = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
         return np.tensordot(np.tensordot(obs,ten,(0,0)),np.conj(ten),((0,1,2),(0,1,2)))
 
+    # Compute observable contraction with boundary tensor at left, result split into two parts
     def bound_left(self,site,obs):
         tenS = np.tensordot(self.mps.read(site),self.mps.readS(site),(2,0)) 
 
@@ -24,6 +58,7 @@ class observables():
 
         return ob1,ob2
 
+    # Compute observable contraction with boundary tensor at right, result split into two parts
     def bound_right(self,site,obs):
         tenS = np.tensordot(self.mps.read(site),self.mps.readS(site-1),(1,0)) 
 
@@ -34,6 +69,7 @@ class observables():
         
         return ob1,ob2
     
+    # Compute all correlation functions from site to right boundary using string operator, append to file
     def all_corr(self,path,site,string,obs1,obs2=None):
         if obs2 is None:
             obs2 = obs1
@@ -53,6 +89,7 @@ class observables():
             with open(path,'a') as f:
                 f.write(f'{site} {i} {res}\n')
 
+    # Compute two-point correlation <obs1(site1) string obs2(site2)> between distant sites
     def two_sites(self,site1,site2,string,obs1,obs2=None):
         if obs2 is None:
             obs2 = obs1
@@ -67,6 +104,7 @@ class observables():
 
         return np.tensordot(cont1,cont2,((0,1),(0,1)))
 
+    # Compute entanglement entropy at left-center bond (between sites 1 and 2)
     def left_EE(self):
         d0,d1,d2 = self.mps.read(2).shape
         ten1 = np.einsum('ij,kli->lkj',self.mps.readS(2),self.mps.read(2))
@@ -81,6 +119,7 @@ class observables():
 
         return -c0**2@np.log(c0**2),-c1**2@np.log(c1**2)
 
+    # Compute entanglement entropy at right-center bond (between sites L-3 and L-2)
     def right_EE(self):
         d0,d1,d2 = self.mps.read(self.L-2).shape
         ten = np.tensordot(self.mps.readS(self.L-3),self.mps.read(self.L-2),(0,1))

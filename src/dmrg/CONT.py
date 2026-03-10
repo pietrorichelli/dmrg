@@ -16,6 +16,8 @@ class CONT:
             Maps direction strings to subdirectory paths {'l':'/LEFT','r':'/RIGHT'}
         count : dict 
             Maps direction to index offset {'l':0,'r':1} for tensor contractions in add(i,ten,dir)
+        add_dict : dict
+            Stores Einstein summation equations for left/right environment contractions
     
     Attributes:
         mps : MPS 
@@ -28,6 +30,8 @@ class CONT:
             Number of sites in the chain
         path : str 
             Directory path for storing contraction tensors (default='CONT')
+        OTC : OptimizedTensorContractor
+            Optimized tensor contraction engine for efficient environment updates
         ram : CONT.ram 
             RAM storage backend for left and right environments
         disk : CONT.disk 
@@ -83,25 +87,29 @@ class CONT:
 
     dir = {'l':'/LEFT','r':'/RIGHT'}
     count = {'l':0,'r':1}
-    # add_dict = {'l':"",
-    #             'r':""}
+    add_dict = {'l':"abc,dae,dfbg,fch->egh",
+                'r':"abc,dea,dfgb,fhc->egh"}
 
+    # Initialize contraction environment with MPS and MPO, setting up RAM/disk storage backends
     def __init__(self,mps,H,path='CONT',max_ram=4):
+
         self.mps = mps
         self.d = mps.d
         self.h = H 
         self.L = mps.L
         self.path = path
+        self.OTC = OptimizedTensorContractor()
 
         self.ram = CONT.ram(self)
         self.disk = CONT.disk(self)
         self.ram.max =  max_ram*1024**3 
         self.ram.current_size = 0
 
-        self.OTC = OptimizedTensorContractor()
         pop_dict = {'l':self.ram.LEFT,'r':self.ram.RIGHT}
 
+    # Write environment tensor at position i in direction dir (RAM if under threshold, else disk)
     def write(self,i,ten,dir):
+
         tensor_size = ten.nbytes
         
         try:
@@ -115,64 +123,54 @@ class CONT:
             self.disk.write(i,ten,dir)
 
 
+    # Read environment tensor from position i in direction dir (tries RAM first, falls back to disk)
     def read(self,i,dir):
         try:
             return self.ram.read(i,dir)
         except KeyError:
             return self.disk.read(i,dir)
 
+    # Contract all tensors left of site (inclusive) to compute left environment from left boundary
     def left(self,site):
-        """ 
-        Contract all the tensors left of site including it 
-        """
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(0),h.Wl(),(0,0)),np.conj(self.mps.read(0)),(1,0))
-        # res = h.Wl().transpose((1, 0, 2))
         for i in range(1,site+1):
-
-            res = self.OTC("abc,dae,dfbg,fch->egh",*(res,self.mps.read(i),h.mpo(p=i),np.conj(self.mps.read(i))))
-            # res = np.tensordot(res,self.mps.read(i),(0,1))
-            # res = np.tensordot(res,h.mpo(p=i),([0,2],[2,0]))
-            # res = np.tensordot(res,np.conj(self.mps.read(i)),([0,2],[1,0]))
+            res = self.OTC.contract("abc,dae,dfbg,fch->egh",*(res,self.mps.read(i),h.mpo(p=i),np.conj(self.mps.read(i))))
 
         return res
 
+    # Contract all tensors right of site (inclusive) to compute right environment from right boundary
     def right(self,site):
-        """
-        Contract all the tensors right of site including it
-        """
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(self.L-1),h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         for i in range(1,self.L-site):
+            res = self.OTC.contract("abc,dea,dfgb,fhc->egh",*(res,self.mps.read(self.L-1-i),h.mpo(p=self.L-1-i),np.conj(self.mps.read(self.L-1-i))))
 
-            res = self.OTC("abc,dea,dfgb,fhc->egh",*(res,self.mps.read(self.L-1-i),h.mpo(p=self.L-1-i),np.conj(self.mps.read(self.L-1-i))))
-            # res = np.tensordot(res,self.mps.read(self.L-1-i),(0,2))
-            # res = np.tensordot(res,h.mpo(p=self.L-1-i),([0,2],[3,0]))
-            # res = np.tensordot(res,np.conj(self.mps.read(self.L-1-i)),([0,2],[2,0]))
-        
         return res
 
     
+    # Add one more site to the environment in the given direction (left or right sweep)
     def add(self,site,dir):
-        ten = self.read(site-(-1)**self.count[dir],dir)
 
-        ten = np.tensordot(ten,self.mps.read(site),(0,1+self.count[dir]))
-        ten = np.tensordot(ten,self.h.mpo(p=site),([0,2],[2+self.count[dir],0]))
-        ten = np.tensordot(ten,np.conj(self.mps.read(site)),([0,2],[1+self.count[dir],0]))
+        ten = self.read(site-(-1)**self.count[dir],dir)
+        ten = self.OTC.contract(self.add_dict[dir],*(ten,self.mps.read(site),self.h.mpo(p=site),np.conj(self.mps.read(site))))
 
         self.write(site,ten,dir)
         return ten
     
+    # Prepare left and right environments for two-site operation at site
     def env_prep(self,site):
         
         return self.read(site - 1,'l'),self.read(site + 2,'r')
 
+    # Initialize environments by incrementally adding sites from both boundaries
     def random(self):
         for i in range(1,self.L//2):
             self.add(i+self.L%2,'l')
             self.add(self.mps.L-i-1,'r')
         
     class ram:
+        # RAM storage backend for left and right environment tensors
 
         def __init__(self,parent):
             self.parent = parent
@@ -199,19 +197,23 @@ class CONT:
         def mps(self):
             return self.parent.mps
 
+        # Store environment tensor in RAM dictionary for given direction
         def write(self,i,ten,dir):
             self.CONTS[dir].update({i:ten})
 
+        # Retrieve environment tensor from RAM dictionary for given position and direction
         def read(self,i,dir):
             return self.CONTS[dir][i]
     
 
+        # Initialize left environment dictionary by contracting from left boundary
         def empty_LEFT(self):
             left = {}
             for i in range(self.L%2+1):
                 left.update({i:self.parent.left(i)})
             return left
 
+        # Initialize right environment dictionary by contracting from right boundary
         def empty_RIGHT(self):
             right = {}
             ten_r = np.tensordot(np.tensordot(self.mps.read(self.L-1),self.h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
@@ -219,6 +221,7 @@ class CONT:
             return right
 
     class disk:
+        # Disk storage backend for large environment tensors using memmap files
 
         def __init__(self,parent):
             self.parent = parent
@@ -245,6 +248,7 @@ class CONT:
         def dir(self):
             return self.parent.dir
 
+        # Create and initialize directory structure for LEFT and RIGHT environment storage
         def empty_CONT(self):
             if os.path.isdir(self.path):
                 shutil.rmtree(self.path)
@@ -255,6 +259,7 @@ class CONT:
                 open(self.path+f'/LEFT/cont_{i}.dat','w')
                 open(self.path+f'/RIGHT/cont_{self.L-i-1}.dat','w')
 
+        # Write environment tensor to disk as memmap file with shape metadata
         def write(self,site,ten,dir):
             if dir != 'l' and dir != 'r':
                 raise ValueError('the direction needs to be either l or r !!!')
@@ -265,9 +270,11 @@ class CONT:
                 f.writelines(repr(ten.shape))
             del tenmap,f
 
+        # Read tensor shape from metadata file (.txt) for given site and direction
         def shape(self,site,dir):
             s = open(self.path+self.dir[dir]+f'/cont_{site}.txt','r')
             return eval(s.read())
 
+        # Load environment tensor from disk memmap file using shape metadata
         def read(self,site,dir):
             return np.memmap(self.path+self.dir[dir]+f'/cont_{site}.dat',dtype='complex',mode='r',shape=self.shape(site,dir))

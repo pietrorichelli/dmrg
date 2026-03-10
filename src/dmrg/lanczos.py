@@ -4,7 +4,49 @@ from scipy.sparse.linalg import ArpackNoConvergence
 from .OptimizedTensorContractor import OptimizedTensorContractor
 
 class EffH():
+    """
+    Effective Hamiltonian for two-site DMRG updates.
+    Builds reduced Hamiltonian from left/right environments and MPO tensors,
+    enabling efficient ground state and excited state optimization via Lanczos iterations.
+    
+    Attributes:
+        L : np.ndarray
+            Left environment tensor (shape: c1 x D x D)
+        R : np.ndarray
+            Right environment tensor (shape: c2 x D x D)
+        H : MPO
+            Matrix Product Operator (Hamiltonian) for the system
+        site : int
+            Left site index for two-site operation
+        k : int
+            Krylov subspace dimension for Lanczos iterations
+        d : int
+            Physical dimension from MPO
+        c1 : int
+            Left environment bond dimension
+        c2 : int
+            Right environment bond dimension
+        len_vec : int
+            Total vector length (c1 * c2 * d^2) for two-site state
+        OTC : OptimizedTensorContractor
+            Optimized tensor contraction engine for matvec operations
+    
+    Methods:
+        __init__(L, R, H, site, k):
+            Initialize effective Hamiltonian with environments and MPO
+        __str__():
+            Return string representation
+        __repr__():
+            Return representation string
+        matvec(psi):
+            Matrix-vector product: apply effective Hamiltonian to state vector
+        lanc_iter(psi0, exc):
+            Run Lanczos iterations building tridiagonal matrix and Krylov basis
+        lanczos_grd(psi0, exc):
+            Find ground (or excited) state via Lanczos eigenvalue solver
+    """
 
+    # Initialize effective Hamiltonian with left/right environments, MPO, and Lanczos parameters
     def __init__(self,L,R,H,site,k=300):
         self.L = L 
         self.R = R 
@@ -20,12 +62,15 @@ class EffH():
         self.k = min(c1*c2*self.d**2,k)
         self.OTC = OptimizedTensorContractor()
 
+    # Return string description of effective Hamiltonian
     def __str__(self):
         return 'Effective Hamiltonian on the Cayley tree'
     
+    # Return representation string for effective Hamiltonian
     def __repr__(self):
         return 'Effective Hamiltonian on the Cayley tree'
 
+    # Apply effective Hamiltonian to state vector: psi -> H|psi> by contracting environments with MPO
     def matvec(self,psi):
         h = self.H
         psi = np.reshape(psi,(self.c1,self.d,self.d,self.c2))
@@ -39,6 +84,7 @@ class EffH():
         
         return np.reshape(x,(self.c1*self.d*self.d*self.c2))
 
+    # Run Lanczos iterations building tridiagonal matrix T and Krylov basis vectors
     def lanc_iter(self,psi0,exc='off'):
         psi0 = psi0/np.linalg.norm(psi0)
         vecs = [psi0] 
@@ -71,6 +117,7 @@ class EffH():
             T[i-1, i] = T[i, i-1] = beta    
         return T, np.array(vecs).T
 
+    # Find ground or excited state eigenvector by diagonalizing Lanczos tridiagonal matrix
     def lanczos_grd(self,psi0=None,exc='off'):
         if psi0 is None:
             psi0 = np.random.rand(self.c1*self.c2*self.d**2)

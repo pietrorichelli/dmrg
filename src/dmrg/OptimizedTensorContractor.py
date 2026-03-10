@@ -35,6 +35,7 @@ class OptimizedTensorContractor:
         False: lambda i, j: (i, j)
     }
 
+    # Initialize caching storage for contraction plans
     def __init__(self, optimize='optimal'):
         self.optimize = optimize
         self._cache = {}  # Cache: equation -> (contraction_plan, transpose_axes)
@@ -80,8 +81,8 @@ class OptimizedTensorContractor:
         
         return np.transpose(result, transpose_axes)
     
+    # Precompute contraction plan and transpose axes for efficient reuse across identical equations
     def _precompute_plan(self, equation):
-        """Precompute contraction plan and transpose info for an equation."""
         
         def einsum_to_tensordot(eq, path):
             inputs, output = eq.split("->")
