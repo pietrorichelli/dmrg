@@ -56,8 +56,24 @@ parser.add_argument('--max_sweeps', type=int, default=5,
                     help='Maximum number of sweeps (default 5)')
 parser.add_argument('--output_dir', type=str, default='OUT/',
                     help='Output directory (default OUT/)')
+parser.add_argument('--param_file', type=str, default=None,
+                    help='Load h_x values from a .txt file (one value per line)')
 
 args = parser.parse_args()
+
+# Load h_x values from file if provided
+if args.param_file:
+    try:
+        par = np.loadtxt(args.param_file, dtype=float)
+    except FileNotFoundError:
+        print(f"Error: Parameter file '{args.param_file}' not found.")
+        exit(1)
+    except ValueError:
+        print(f"Error: Parameter file '{args.param_file}' contains invalid values.")
+        exit(1)
+else:
+    # Use parsed arguments
+    par = np.linspace(args.h_min, args.h_max, args.num_points)
 
 # Use parsed arguments
 path_out = args.output_dir
@@ -114,17 +130,10 @@ for idx, h_x in enumerate(par, 1):
     mps.random()
     cont.random()
 
-    # Increase the bond dimension to the desired one 
-    # sys.chi = chi
-
     # run the first one and half sweep
     for site,dir in mps.first_sweep():
         _,_,_ = sys.step2sites(site,dir=dir,stage='Final')
         
-        # # write sweep energy
-        # with open(path_par + 'E_sweep.txt','a') as f:
-        #     f.write(f'{E} \n')
-
     # Set up counter and energy check
     k = 0 
     En_temp = np.zeros(2*L-8)

@@ -15,3 +15,5 @@ benchmark*
 examples/OUT/
 
 dev/OUT*
+
+examples/params_example.txt
