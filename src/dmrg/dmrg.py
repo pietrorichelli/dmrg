@@ -111,7 +111,6 @@ class dmrg():
         if dir == 'l' or dir == 'bl':
             init_vec = self.OTC.contract("abc,dce,ef->badf",*(self.mps.read(site),self.mps.read(site+1),self.mps.readS(site+1)))
         if dir == 'r' or dir == 'br':
-        
             init_vec = self.OTC.contract("ab,cbd,edf->acef",*(self.mps.readS(site-1),self.mps.read(site),self.mps.read(site+1)))
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
@@ -128,6 +127,7 @@ class dmrg():
                 self.k += self.inc
                 self.k_increased = True
                 En, grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
+                grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
             
         if stage == 'Final':
             grd_state = 1/np.sqrt(init_vec@np.conj(init_vec))*init_vec
