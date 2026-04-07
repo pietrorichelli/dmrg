@@ -29,62 +29,60 @@ class OptimizedTensorContractor:
     >>> result.shape  # (4, 25)
     """
     
-    # Global attribute: maps condition (i < j) to lambda that returns pop order
     pop_idx = {
         True: lambda i, j: (j, i),
         False: lambda i, j: (i, j)
     }
 
-    # Initialize caching storage for contraction plans
     def __init__(self, optimize='optimal'):
+        # Initialize the contraction strategy and cached paths.
         self.optimize = optimize
-        self._cache = {}  # Cache: equation -> (contraction_plan, transpose_axes)
+        self._cache = {}  # Cache: (equation, rounded_shapes) -> (contraction_plan, transpose_axes)
+
+    @staticmethod
+    def _round_dim_to_10(dim):
+        # Round large dimensions to the nearest multiple of ten.
+        if dim < 10:
+            return dim
+        return int(round(dim / 10.0) * 10)
+
+    def _rounded_shapes_key(self, tensors):
+        # Build a cache key from tensor shapes rounded by dimension.
+        return tuple(
+            tuple(self._round_dim_to_10(dim) for dim in tensor.shape)
+            for tensor in tensors
+        )
     
     def contract(self, equation, *tensors):
-        """
-        Execute the optimized tensor contraction.
-        
-        Parameters
-        ----------
-        equation : str
-            Einstein summation convention string (e.g., 'abc,dae->be')
-        *tensors : np.ndarray
-            Variable number of tensors to contract (must match equation)
-        
-        Returns
-        -------
-        np.ndarray
-            Contracted result with indices matching the output specification
-        """
-        # Check cache for this equation
+        # Execute the contraction using a cached or newly computed plan.
+        cache_key = (equation, self._rounded_shapes_key(tensors))
+
         try:
-            contraction_plan, transpose_axes = self._cache[equation]
+            contraction_plan, transpose_axes = self._cache[cache_key]
         except KeyError:
-            self._cache[equation] = self._precompute_plan(equation)
-            contraction_plan, transpose_axes = self._cache[equation]
+            self._cache[cache_key] = self._precompute_plan(equation, cache_key[1])
+            contraction_plan, transpose_axes = self._cache[cache_key]
         
-        # Execute contraction using shrinking list (fast for small n)
         temp_tensors = list(tensors)
         result = None
         
-        for step_idx, ((i, j), (axes_i, axes_j)) in enumerate(contraction_plan):
+        for (i, j), (axes_i, axes_j) in contraction_plan:
             t_i = temp_tensors[i]
             t_j = temp_tensors[j]
             result = np.tensordot(t_i, t_j, axes=(axes_i, axes_j))
             
-            # Remove contracted tensors using global pop_idx (largest index first)
             first, second = self.pop_idx[i < j](i, j)
             temp_tensors.pop(first)
             temp_tensors.pop(second)
-            
             temp_tensors.append(result)
         
         return np.transpose(result, transpose_axes)
     
-    # Precompute contraction plan and transpose axes for efficient reuse across identical equations
-    def _precompute_plan(self, equation):
+    def _precompute_plan(self, equation, rounded_shapes):
+        # Precompute the tensordot sequence and final transpose order.
         
         def einsum_to_tensordot(eq, path):
+            # Translate an einsum contraction path into tensordot steps.
             inputs, output = eq.split("->")
             output_inds = list(output)
             tensors_list = [list(x) for x in inputs.split(",")]
@@ -96,8 +94,8 @@ class OptimizedTensorContractor:
                 inds_j = tensors_list[j]
                 shared = [x for x in inds_i if x in inds_j]
                 
-                axes_i = tuple([inds_i.index(x) for x in shared])
-                axes_j = tuple([inds_j.index(x) for x in shared])
+                axes_i = tuple(inds_i.index(x) for x in shared)
+                axes_j = tuple(inds_j.index(x) for x in shared)
                 
                 axis_pairs = list(zip(axes_i, axes_j))
                 axis_pairs.sort(key=lambda x: x[0])
@@ -112,24 +110,28 @@ class OptimizedTensorContractor:
                     [x for x in inds_j if x not in shared]
                 )
                 
-                # Use global pop_idx dictionary
                 first, second = self.pop_idx[i < j](i, j)
                 tensors_list.pop(first)
                 tensors_list.pop(second)
-                
                 tensors_list.append(new_inds)
             
             final_inds = tensors_list[0]
-            transpose_axes = tuple([final_inds.index(x) for x in output_inds])
+            transpose_axes = tuple(final_inds.index(x) for x in output_inds)
             
             return plan, transpose_axes
         
-        # Get path from opt_einsum
-        num_tensors = len(equation.split("->")[0].split(","))
-        dummy_tensors = [np.empty((2,)*len(idx)) for idx in equation.split("->")[0].split(",")]
+        dummy_tensors = [np.empty(shape) for shape in rounded_shapes]
         path, _ = oe.contract_path(equation, *dummy_tensors, optimize=self.optimize)
-        
-        # Build contraction plan
         contraction_plan, transpose_axes = einsum_to_tensordot(equation, path)
         
         return contraction_plan, transpose_axes
+
+_default_contractors = {}
+
+def contract(equation, *tensors, optimize='optimal'):
+    # Reuse one default contractor per optimization strategy.
+    contractor = _default_contractors.get(optimize)
+    if contractor is None:
+        contractor = OptimizedTensorContractor(optimize=optimize)
+        _default_contractors[optimize] = contractor
+    return contractor.contract(equation, *tensors)

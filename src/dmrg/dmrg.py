@@ -5,50 +5,50 @@ from itertools import product
 from .MPS import MPS
 from .CONT import CONT
 from .lanczos import EffH
-from .OptimizedTensorContractor import OptimizedTensorContractor
+from .OptimizedTensorContractor import contract
 
 
 class dmrg():
     """
-    Density Matrix Renormalization Group (DMRG) algorithm for finite and infinite 1D systems.
-    Performs optimization of Matrix Product States through two-site updates with automatic
-    bond dimension truncation and environment management.
-    
-    Attributes:
-        cont : CONT
-            Contraction environment managing left/right environments for two-site operations
-        mps : MPS
-            Matrix Product State being optimized
-        chi : int
-            Maximum bond dimension for truncation (default=100)
-        h : MPO
-            Matrix Product Operator (Hamiltonian) for the system
-        L : int
-            Number of sites in the chain
-        count : dict
-            Direction mapping {'l':0, 'r':1} for tensor operations
-        d : int
-            Physical dimension of each site
-        k : int
-            Krylov subspace dimension for Lanczos iterations (default=300)
-        inc : int
-            Increment for k when convergence fails (default=20)
-        cut : float
-            Singular value cutoff threshold for truncation (default=1e-8)
-        err : float
-            Energy convergence tolerance (default=1e-8)
-        exc : str
-            Excited state mode ('off' for ground state, else excited state calculation)
-        OTC : OptimizedTensorContractor
-            Optimized tensor contraction engine for efficient operations
-    
-    Methods:
-        __init__(cont, chi, cut, k, inc, err, exc):
-            Initialize DMRG with contraction environment and algorithm parameters
-        infinite():
-            Run complete infinite DMRG sweep from left to right boundaries
-        step2sites(site, dir, stage):
-            Perform two-site update at given site in specified direction with optional staging
+        Density Matrix Renormalization Group (DMRG) algorithm for finite and infinite 1D systems.
+        Performs optimization of Matrix Product States through two-site updates with automatic
+        bond dimension truncation and environment management.
+        
+        Attributes:
+            cont : CONT
+                Contraction environment managing left/right environments for two-site operations
+            mps : MPS
+                Matrix Product State being optimized
+            chi : int
+                Maximum bond dimension for truncation (default=100)
+            h : MPO
+                Matrix Product Operator (Hamiltonian) for the system
+            L : int
+                Number of sites in the chain
+            count : dict
+                Direction mapping {'l':0, 'r':1} for tensor operations
+            d : int
+                Physical dimension of each site
+            k : int
+                Krylov subspace dimension for Lanczos iterations (default=300)
+            inc : int
+                Increment for k when convergence fails (default=20)
+            cut : float
+                Singular value cutoff threshold for truncation (default=1e-8)
+            err : float
+                Energy convergence tolerance (default=1e-8)
+            exc : str
+                Excited state mode ('off' for ground state, else excited state calculation)
+            OTC : OptimizedTensorContractor
+                Optimized tensor contraction engine for efficient operations
+        
+        Methods:
+            __init__(cont, chi, cut, k, inc, err, exc):
+                Initialize DMRG with contraction environment and algorithm parameters
+            infinite():
+                Run complete infinite DMRG sweep from left to right boundaries
+            step2sites(site, dir, stage):
+                Perform two-site update at given site in specified direction with optional staging
     """
 
     # Initialize DMRG with contraction environment and algorithm parameters (chi, cut, k, inc, err, exc)
@@ -65,7 +65,6 @@ class dmrg():
         self.inc = inc 
         self.err = err 
         self.exc = exc
-        self.OTC = OptimizedTensorContractor()
         self.k_increased = False
 
     
@@ -109,9 +108,9 @@ class dmrg():
         H = EffH(env_left,env_right,self.h,site=site,k=self.k)
 
         if dir == 'l' or dir == 'bl':
-            init_vec = self.OTC.contract("abc,dce,ef->badf",*(self.mps.read(site),self.mps.read(site+1),self.mps.readS(site+1)))
+            init_vec = contract("abc,dce,ef->badf",*(self.mps.read(site),self.mps.read(site+1),self.mps.readS(site+1)))
         if dir == 'r' or dir == 'br':
-            init_vec = self.OTC.contract("ab,cbd,edf->acef",*(self.mps.readS(site-1),self.mps.read(site),self.mps.read(site+1)))
+            init_vec = contract("ab,cbd,edf->acef",*(self.mps.readS(site-1),self.mps.read(site),self.mps.read(site+1)))
 
         init_vec = np.reshape(init_vec,np.prod(init_vec.shape))
 
@@ -124,7 +123,9 @@ class dmrg():
             grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
 
             if np.conj(grd_state)@H.matvec(grd_state) - En_pre > self.err:
+                print('aaaa')
                 self.k += self.inc
+                H.k += self.inc
                 self.k_increased = True
                 En, grd = H.lanczos_grd(psi0=grd_pre,exc=self.exc)
                 grd_state = 1/np.sqrt(np.conj(grd)@grd)*grd
@@ -156,7 +157,7 @@ class dmrg():
             if site == 1:
                 self.cont.add(site,'l')
         
-        return En, -c**2@np.log(c**2), En_pre
+        return En, -c**2@np.log(c**2), En_pre.real
 
 
         

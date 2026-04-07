@@ -3,86 +3,86 @@ import psutil
 import shutil
 import numpy as np
 
-from .OptimizedTensorContractor import OptimizedTensorContractor
+from .OptimizedTensorContractor import contract
 
 class CONT:
     """
-    Contraction environment for DMRG.
-    Stores left and right environment tensors with automatic RAM/disk switching.
-    Used to build effective Hamiltonians for finite-system DMRG sweeps.
-    
-    Class Variables:
-        dir : dict 
-            Maps direction strings to subdirectory paths {'l':'/LEFT','r':'/RIGHT'}
-        count : dict 
-            Maps direction to index offset {'l':0,'r':1} for tensor contractions in add(i,ten,dir)
-        add_dict : dict
-            Stores Einstein summation equations for left/right environment contractions
-    
-    Attributes:
-        mps : MPS 
-            Reference to the Matrix Product State
-        d : int 
-            Physical dimension
-        h : MPO
-            The matrix product operator (Hamiltonian)
-        L : int 
-            Number of sites in the chain
-        path : str 
-            Directory path for storing contraction tensors (default='CONT')
-        OTC : OptimizedTensorContractor
-            Optimized tensor contraction engine for efficient environment updates
-        ram : CONT.ram 
-            RAM storage backend for left and right environments
-        disk : CONT.disk 
-            Disk storage backend for left and right environments
-    
-    Methods:
-        __init__(mps, H, path, max_ram): 
-            Initialize contraction environment with MPS and MPO
-        write(i, ten, dir): 
-            Write environment tensor at position i in direction dir (RAM or disk)
-        read(i, dir): 
-            Read environment tensor from position i in direction dir
-        left(site): 
-            Contract all tensors left of site (inclusive) to compute left environment
-        right(site): 
-            Contract all tensors right of site (inclusive) to compute right environment
-        add(site, dir): 
-            Update environment by adding one more site in the given direction
-        env_prep(site): 
-            Prepare left and right environments for two-site operation at site
-        random(): 
-            Initialize environments by adding sites incrementally from boundaries
-    
-    Inner Classes:
-        ram: Manages in-memory dictionary storage for environments
-            - LEFT (dict): 
-                Dictionary of left environment tensors
-            - RIGHT (dict): 
-                Dictionary of right environment tensors
-            - CONTS (dict): 
-                Maps direction 'l'/'r' to LEFT/RIGHT dictionaries
-            - write(i, ten, dir): 
-                Store tensor in appropriate direction dictionary
-            - read(i, dir): 
-                Retrieve tensor from appropriate direction dictionary
-            - empty_LEFT(): 
-                Initialize LEFT with contraction from site 0
-            - empty_RIGHT(): 
-                Initialize RIGHT with contraction from site L-1
+        Contraction environment for DMRG.
+        Stores left and right environment tensors with automatic RAM/disk switching.
+        Used to build effective Hamiltonians for finite-system DMRG sweeps.
         
-        disk: Manages memmap-based file storage for environments
-            - path (str): 
-                Base directory for LEFT and RIGHT subdirectories
-            - write(site, ten, dir): 
-                Write environment tensor to memmap file with shape metadata
-            - read(site, dir): 
-                Load environment tensor from memmap file
-            - shape(site, dir): 
-                Read tensor shape from .txt metadata file
-            - empty_CONT(): 
-                Initialize directory structure for LEFT and RIGHT contractions
+        Class Variables:
+            dir : dict 
+                Maps direction strings to subdirectory paths {'l':'/LEFT','r':'/RIGHT'}
+            count : dict 
+                Maps direction to index offset {'l':0,'r':1} for tensor contractions in add(i,ten,dir)
+            add_dict : dict
+                Stores Einstein summation equations for left/right environment contractions
+        
+        Attributes:
+            mps : MPS 
+                Reference to the Matrix Product State
+            d : int 
+                Physical dimension
+            h : MPO
+                The matrix product operator (Hamiltonian)
+            L : int 
+                Number of sites in the chain
+            path : str 
+                Directory path for storing contraction tensors (default='CONT')
+            OTC : OptimizedTensorContractor
+                Optimized tensor contraction engine for efficient environment updates
+            ram : CONT.ram 
+                RAM storage backend for left and right environments
+            disk : CONT.disk 
+                Disk storage backend for left and right environments
+        
+        Methods:
+            __init__(mps, H, path, max_ram): 
+                Initialize contraction environment with MPS and MPO
+            write(i, ten, dir): 
+                Write environment tensor at position i in direction dir (RAM or disk)
+            read(i, dir): 
+                Read environment tensor from position i in direction dir
+            left(site): 
+                Contract all tensors left of site (inclusive) to compute left environment
+            right(site): 
+                Contract all tensors right of site (inclusive) to compute right environment
+            add(site, dir): 
+                Update environment by adding one more site in the given direction
+            env_prep(site): 
+                Prepare left and right environments for two-site operation at site
+            random(): 
+                Initialize environments by adding sites incrementally from boundaries
+        
+        Inner Classes:
+            ram: Manages in-memory dictionary storage for environments
+                - LEFT (dict): 
+                    Dictionary of left environment tensors
+                - RIGHT (dict): 
+                    Dictionary of right environment tensors
+                - CONTS (dict): 
+                    Maps direction 'l'/'r' to LEFT/RIGHT dictionaries
+                - write(i, ten, dir): 
+                    Store tensor in appropriate direction dictionary
+                - read(i, dir): 
+                    Retrieve tensor from appropriate direction dictionary
+                - empty_LEFT(): 
+                    Initialize LEFT with contraction from site 0
+                - empty_RIGHT(): 
+                    Initialize RIGHT with contraction from site L-1
+            
+            disk: Manages memmap-based file storage for environments
+                - path (str): 
+                    Base directory for LEFT and RIGHT subdirectories
+                - write(site, ten, dir): 
+                    Write environment tensor to memmap file with shape metadata
+                - read(site, dir): 
+                    Load environment tensor from memmap file
+                - shape(site, dir): 
+                    Read tensor shape from .txt metadata file
+                - empty_CONT(): 
+                    Initialize directory structure for LEFT and RIGHT contractions
     """
 
     dir = {'l':'/LEFT','r':'/RIGHT'}
@@ -91,51 +91,62 @@ class CONT:
                 'r':"abc,dea,dfgb,fhc->egh"}
 
     # Initialize contraction environment with MPS and MPO, setting up RAM/disk storage backends
-    def __init__(self,mps,H,path='CONT',max_ram=4):
+    def __init__(self,mps,H,path='CONT',max_ram=4,random=True):
 
         self.mps = mps
         self.d = mps.d
         self.h = H 
         self.L = mps.L
         self.path = path
-        self.OTC = OptimizedTensorContractor()
-
+        self.ten_status = {}
+        
         self.ram = CONT.ram(self)
         self.disk = CONT.disk(self)
+
         self.ram.max =  max_ram*1024**3 
         self.ram.current_size = 0
 
         pop_dict = {'l':self.ram.LEFT,'r':self.ram.RIGHT}
+        self.read_dict = {'ram':self.ram.read,
+                        'disk':self.disk.read}
+        
+        if random:
+            self.random()
 
     # Write environment tensor at position i in direction dir (RAM if under threshold, else disk)
     def write(self,i,ten,dir):
-
+        # Calculate tensor size in bytes
         tensor_size = ten.nbytes
-        
+
         try:
-            ((self.ram.current_size > self.ram.max - tensor_size) and self.disk.write or self.ram.write)(i,ten,dir)
-            self.ram.current_size += tensor_size * (self.ram.current_size <= self.ram.max - tensor_size)
-        except ValueError:
-            self.ram.current_size -= self.ram.CONTS[dir].get(i, ten).nbytes if i in self.ram.CONTS[dir] else 0
-            self.ram.CONTS[dir].pop(i, None)
-            self.disk.write(i,ten,dir)
+            # Write the tensor on the Ram 
+            if self.ten_status[(i,dir)] == 'ram':
+                if self.ram.current_size + tensor_size < self.ram.max :
+                    self.ram.write(i,ten,dir)
+                    self.ram.current_size += tensor_size
+                if self.ram.current_size + tensor_size > self.ram.max:
+                    self.disk.write(i,ten,dir)
+                    self.ram.current_size -= self.ram.read(i,dir).nbytes
+                    self.ram.CONTS[dir].pop(i,None)
+                    self.ten_status.update({(i,dir):'disk'})
+            if self.ten_status[(i,dir)] == 'disk':
+                self.disk.write(i,ten,dir)
+                
         except KeyError:
-            self.disk.write(i,ten,dir)
+            self.ram.write(i,ten,dir)
+            self.ten_status.update({(i,dir):'ram'})
 
 
     # Read environment tensor from position i in direction dir (tries RAM first, falls back to disk)
     def read(self,i,dir):
-        try:
-            return self.ram.read(i,dir)
-        except KeyError:
-            return self.disk.read(i,dir)
+        return self.read_dict[self.ten_status[(i,dir)]](i,dir)
 
     # Contract all tensors left of site (inclusive) to compute left environment from left boundary
     def left(self,site):
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(0),h.Wl(),(0,0)),np.conj(self.mps.read(0)),(1,0))
         for i in range(1,site+1):
-            res = self.OTC.contract("abc,dae,dfbg,fch->egh",*(res,self.mps.read(i),h.mpo(p=i),np.conj(self.mps.read(i))))
+            res = contract("abc,dae,dfbg,fch->egh",*(res,self.mps.read(i),h.mpo(p=i),np.conj(self.mps.read(i))))
 
         return res
 
@@ -144,7 +155,7 @@ class CONT:
         h = self.h
         res = np.tensordot(np.tensordot(self.mps.read(self.L-1),h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
         for i in range(1,self.L-site):
-            res = self.OTC.contract("abc,dea,dfgb,fhc->egh",*(res,self.mps.read(self.L-1-i),h.mpo(p=self.L-1-i),np.conj(self.mps.read(self.L-1-i))))
+            res = contract("abc,dea,dfgb,fhc->egh",*(res,self.mps.read(self.L-1-i),h.mpo(p=self.L-1-i),np.conj(self.mps.read(self.L-1-i))))
 
         return res
 
@@ -153,7 +164,7 @@ class CONT:
     def add(self,site,dir):
 
         ten = self.read(site-(-1)**self.count[dir],dir)
-        ten = self.OTC.contract(self.add_dict[dir],*(ten,self.mps.read(site),self.h.mpo(p=site),np.conj(self.mps.read(site))))
+        ten = contract(self.add_dict[dir],*(ten,self.mps.read(site),self.h.mpo(p=site),np.conj(self.mps.read(site))))
 
         self.write(site,ten,dir)
         return ten
@@ -167,7 +178,9 @@ class CONT:
     def random(self):
         for i in range(1,self.L//2):
             self.add(i+self.L%2,'l')
+            self.ten_status.update({(i+self.L%2,'l'):'ram'})
             self.add(self.mps.L-i-1,'r')
+            self.ten_status.update({(self.mps.L-i-1,'r'):'ram'})
         
     class ram:
         # RAM storage backend for left and right environment tensors
@@ -196,6 +209,10 @@ class CONT:
         @property
         def mps(self):
             return self.parent.mps
+        
+        @property
+        def ten_status(self):
+            return self.parent.ten_status
 
         # Store environment tensor in RAM dictionary for given direction
         def write(self,i,ten,dir):
@@ -211,6 +228,7 @@ class CONT:
             left = {}
             for i in range(self.L%2+1):
                 left.update({i:self.parent.left(i)})
+                self.ten_status.update({(i,'l'):'ram'})
             return left
 
         # Initialize right environment dictionary by contracting from right boundary
@@ -218,6 +236,7 @@ class CONT:
             right = {}
             ten_r = np.tensordot(np.tensordot(self.mps.read(self.L-1),self.h.Wr(),(0,0)),np.conj(self.mps.read(self.L-1)),(1,0))
             right.update({self.L-1:ten_r})
+            self.ten_status.update({(self.L-1,'r'):'ram'})
             return right
 
     class disk:

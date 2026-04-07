@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import eigh_tridiagonal
 from scipy.sparse.linalg import ArpackNoConvergence
-from .OptimizedTensorContractor import OptimizedTensorContractor
+from .OptimizedTensorContractor import contract
 
 class EffH():
     """
@@ -60,7 +60,6 @@ class EffH():
         self.c2 = c2
         self.len_vec = c1*c2*self.d**2
         self.k = min(c1*c2*self.d**2,k)
-        self.OTC = OptimizedTensorContractor()
 
     # Return string description of effective Hamiltonian
     def __str__(self):
@@ -75,12 +74,7 @@ class EffH():
         h = self.H
         psi = np.reshape(psi,(self.c1,self.d,self.d,self.c2))
         
-        x = self.OTC.contract('abc,dfbk,adgi,ghkl,ilm->cfhm',*(self.L,h.mpo(self.site),psi,h.mpo(self.site+1),self.R))
-
-        # x = np.tensordot(self.L,h.mpo(p=self.site),(1,2))
-        # x = np.tensordot(x,psi,[(0,2),(0,1)])
-        # x = np.tensordot(x,h.mpo(p=self.site+1),[(2,3),(2,0)])
-        # x = np.tensordot(x,self.R,[(4,2),(1,0)])
+        x = contract('abc,dfbk,adgi,ghkl,ilm->cfhm',*(self.L,h.mpo(self.site),psi,h.mpo(self.site+1),self.R))
         
         return np.reshape(x,(self.c1*self.d*self.d*self.c2))
 
@@ -90,8 +84,6 @@ class EffH():
         vecs = [psi0] 
 
         T = np.zeros((self.k,self.k))
-        
-        self.OTC._cache = {}
 
         psi = self.matvec(psi0)
         alpha = T[0, 0] = np.inner(psi0.conj(),psi).real
@@ -141,4 +133,3 @@ class EffH():
             result = psi0
 
         return E, result
-        

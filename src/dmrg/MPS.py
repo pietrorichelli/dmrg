@@ -5,113 +5,129 @@ import numpy as np
 
 class MPS():
     """
-    Matrix Product State (MPS) tensor storage class.
-    Manages tensors for a 1D chain with automatic RAM/disk switching based on memory thresholds.
-    
-    Attributes:
-        L : int 
-            Number of sites in the chain
-        d : int
-            Physical dimension (default=2)
-        S : dict
-            Dictionary storing bond singular values (diagonal matrices) indexed by bond position
-        path : str
-            Directory path for storing disk-based tensors (default='MPS')
-        ram : MPS.ram 
-            RAM storage backend managing in-memory tensor dictionary
-        disk : MPS.disk 
-            Disk storage backend managing memmap-based tensors
-    
-    Methods:
-        __init__(L, d, path, max_ram): 
-            Initialize MPS with chain length L, physical dimension d, and memory threshold
-        write(i, ten): 
-            Write tensor to position i (RAM or disk based on memory threshold)
-        read(i): 
-            Read tensor from position i (automatically fetch from RAM or disk)
-        writeS(i, ten): 
-            Write bond singular values at position i to S dictionary
-        readS(i): 
-            Read bond singular values from position i
-        write_left(i, mat): 
-            Transform matrix to left-canonical form and write
-        write_right(i, mat): 
-            Transform matrix to right-canonical form and write
-        delete(i): 
-            Delete singular value files at bond i
-        left_ten(mat): 
-            Reshape matrix into left-canonical tensor form
-        right_ten(mat): 
-            Reshape matrix into right-canonical tensor form
-        first_sweep(): 
-            Iterator for initial half-sweep (right then left)
-        sweep(): 
-            Iterator for full sweep (right then left)
-        right_sweep(): 
-            Iterator for right-moving sweep only
-        left_sweep(): 
-            Iterator for left-moving sweep only
-        random(): 
-            Initialize MPS with random tensors and identity on center bond
-    
-    Inner Classes:
-        ram: Manages in-memory dictionary storage with automatic spilling to disk
-            - mps : dict 
-                Dictionary of tensors indexed by site
-            - max : int 
-                Maximum RAM size in bytes before spilling to disk
-            - write(i, ten): 
-                Store tensor in memory
-            - read(i): 
-                Retrieve tensor from memory
-            - empty_MPS(): 
-                Initialize with boundary identities
+        Matrix Product State (MPS) tensor storage class.
+        Manages tensors for a 1D chain with automatic RAM/disk switching based on memory thresholds.
         
-        disk: Manages memmap-based file storage using .dat and .txt pairs
-            - path : str 
-                Base directory for storage
-            - write(i, ten): 
-                Write tensor to memmap file with shape metadata
-            - read(i): 
-                Load tensor from memmap file
-            - shape(i): 
-                Read tensor shape from .txt metadata file
-            - empty_MPS(): 
-                Initialize directory structure and boundary tensors
+        Attributes:
+            L : int 
+                Number of sites in the chain
+            d : int
+                Physical dimension (default=2)
+            S : dict
+                Dictionary storing bond singular values (diagonal matrices) indexed by bond position
+            path : str
+                Directory path for storing disk-based tensors (default='MPS')
+            ram : MPS.ram 
+                RAM storage backend managing in-memory tensor dictionary
+            disk : MPS.disk 
+                Disk storage backend managing memmap-based tensors
+        
+        Methods:
+            __init__(L, d, path, max_ram): 
+                Initialize MPS with chain length L, physical dimension d, and memory threshold
+            write(i, ten): 
+                Write tensor to position i (RAM or disk based on memory threshold)
+            read(i): 
+                Read tensor from position i (automatically fetch from RAM or disk)
+            writeS(i, ten): 
+                Write bond singular values at position i to S dictionary
+            readS(i): 
+                Read bond singular values from position i
+            write_left(i, mat): 
+                Transform matrix to left-canonical form and write
+            write_right(i, mat): 
+                Transform matrix to right-canonical form and write
+            delete(i): 
+                Delete singular value files at bond i
+            left_ten(mat): 
+                Reshape matrix into left-canonical tensor form
+            right_ten(mat): 
+                Reshape matrix into right-canonical tensor form
+            first_sweep(): 
+                Iterator for initial half-sweep (right then left)
+            sweep(): 
+                Iterator for full sweep (right then left)
+            right_sweep(): 
+                Iterator for right-moving sweep only
+            left_sweep(): 
+                Iterator for left-moving sweep only
+            random(): 
+                Initialize MPS with random tensors and identity on center bond
+        
+        Inner Classes:
+            ram: Manages in-memory dictionary storage with automatic spilling to disk
+                - mps : dict 
+                    Dictionary of tensors indexed by site
+                - max : int 
+                    Maximum RAM size in bytes before spilling to disk
+                - write(i, ten): 
+                    Store tensor in memory
+                - read(i): 
+                    Retrieve tensor from memory
+                - empty_MPS(): 
+                    Initialize with boundary identities
+            
+            disk: Manages memmap-based file storage using .dat and .txt pairs
+                - path : str 
+                    Base directory for storage
+                - write(i, ten): 
+                    Write tensor to memmap file with shape metadata
+                - read(i): 
+                    Load tensor from memmap file
+                - shape(i): 
+                    Read tensor shape from .txt metadata file
+                - empty_MPS(): 
+                    Initialize directory structure and boundary tensors
     """
     
     # Initialize MPS with chain length L, physical dimension d, and RAM/disk storage backends
-    def __init__(self,L,d=2,path='MPS',max_ram=4):
+    def __init__(self,L,d=2,path='MPS',max_ram=4,random=True):
+
         self.L = L 
         self.d = d
         self.S = {}
+        self.ten_status = {}
         self.path = path
+
         self.ram = MPS.ram(self)
         self.disk = MPS.disk(self)
+        
         self.ram.max = max_ram*1024**3
         self.ram.current_size = 0
+
+        # dictionary to read
+        self.read_dict = {'ram': self.ram.read,
+                            'disk':self.disk.read}
+
+        if random:
+            self.random()
 
     # Write tensor at position i to RAM or disk based on memory threshold
     def write(self,i,ten):
         # Calculate tensor size in bytes
         tensor_size = ten.nbytes
-        
+
         try:
-            ((self.ram.current_size > self.ram.max - tensor_size) and self.disk.write or self.ram.write)(i,ten)
-            self.ram.current_size += tensor_size * (self.ram.current_size <= self.ram.max - tensor_size)
-        except ValueError:
-            self.ram.current_size -= self.ram.mps.get(i, ten).nbytes if i in self.ram.mps else 0
-            self.ram.mps.pop(i, None)
-            self.disk.write(i,ten)
+            # Write the tensor on the Ram 
+            if self.ten_status[i] == 'ram':
+                if self.ram.current_size + tensor_size < self.ram.max :
+                    self.ram.write(i,ten)
+                    self.ram.current_size += tensor_size
+                if self.ram.current_size + tensor_size > self.ram.max:
+                    self.disk.write(i,ten)
+                    self.ram.current_size -= self.ram.read(i).nbytes
+                    self.ram.MPS.pop(i,None)
+                    self.ten_status.update({i:'disk'})
+            if self.ten_status[i] == 'disk':
+                self.disk.write(i,ten)
+                
         except KeyError:
-            self.disk.write(i,ten)
+            self.ram.write(i,ten)
+            self.ten_status.update({i:'ram'})
 
     # Read tensor from position i (RAM first, fallback to disk)
     def read(self,i):
-        try: 
-            return self.ram.read(i)
-        except KeyError:
-            return self.disk.read(i)
+        return self.read_dict[self.ten_status[i]](i)
 
     # Write bond singular values (diagonal matrix) at position i
     def writeS(self,i,ten):
@@ -182,8 +198,8 @@ class MPS():
             self.max = self.max_size()
 
             # initialise the ram MPS
-            self.mps = self.empty_MPS()
-            # self.mps = {}
+            self.MPS = self.empty_MPS()
+            # self.MPS = {}
             
 
         @property
@@ -193,6 +209,10 @@ class MPS():
         @property
         def d(self):
             return self.parent.d
+        
+        @property
+        def ten_status(self):
+            return self.parent.ten_status
 
         
         # Calculate maximum tensor size that fits in available RAM
@@ -203,18 +223,20 @@ class MPS():
 
         # Store tensor in memory dictionary
         def write(self,i,ten):
-            self.mps.update({i:ten})
+            self.MPS.update({i:ten})
         
         # Retrieve tensor from memory dictionary
         def read(self,i):
-            return self.mps[i]
+            return self.MPS[i]
         
         # Initialize MPS dictionary with boundary identity tensors
         def empty_MPS(self):
-            mps = {}
-            mps.update({0:np.eye(self.d)})
-            mps.update({self.L-1:np.eye(self.d)})
-            return mps
+            MPS = {}
+            MPS.update({0:np.eye(self.d)})
+            MPS.update({self.L-1:np.eye(self.d)})
+            self.ten_status.update({0:'ram'})
+            self.ten_status.update({self.L-1:'ram'})
+            return MPS
 
     class disk:
         # Disk storage backend for tensors using memmap files with .dat and .txt metadata
